@@ -1,0 +1,74 @@
+# Wolfchatter — Technical PRD
+
+| | |
+|---|---|
+| Status | v1, written before any code (2026-09-04) |
+| Author | Radu Niculae |
+| Audience | The AI tooling and any teammate kicking off the implementation |
+| Companions | `architecture.md` (decisions in depth, dependency budget), `delivery-plan.md` (PR sequence) |
+
+## 1. Summary
+
+Wolfchatter is a real-time chat on a map. A user clicks anywhere on a Leaflet map, a pin appears and a chatroom opens in a panel on the right. Clicking an existing pin switches the panel to that room. Anyone can post messages under a chosen username; rooms and messages survive reloads and are delivered live to everyone viewing the same room.
+
+**Goal:** one complete, polished end-to-end path (click → pin → panel → post → persisted → live in other browsers), runnable from a fresh clone with one command, plus the artefacts the brief asks for: this PRD, an infra and cost estimate, a committed self-review configuration and report, and the AI configuration used.
+
+**Out of scope:** accounts and authentication, private rooms, moderation, editing or deleting messages, media, presence and typing indicators, push notifications, i18n, horizontal scaling (designed for, not built), a native mobile app (structured for, not built).
+
+## 2. Functional requirements
+
+| ID | Requirement | Acceptance criteria |
+|---|---|---|
+| FR-1 | Map layout matching the reference | Browser title "Wolfchatter". Full-viewport Leaflet map, center `[46.7712, 23.6236]`, zoom 5, watercolor tiles, zoom controls top-left, default blue markers. Empty-state panel top-right: "Click on the map to start a chat". |
+| FR-2 | Create a pin on click | One click creates a room at that lat/lng, adds a marker immediately and opens its panel. Rooms are named "Chatroom 1", "Chatroom 2"…, unique even under concurrent creation. |
+| FR-3 | Select an existing pin | Clicking a marker switches the panel: title, message history, highlighted marker. Clicking the map while a room is open creates a new room. |
+| FR-4 | Post messages | Username input ("write your user name here"), message input ("write message here"), Submit; Enter submits. Username 1–32 chars, message 1–500 chars, trimmed; empty input gets an inline error and is never sent. The username is remembered per browser. |
+| FR-5 | Message display | Username, text and a `<time>` stamp formatted `dd/MM/yyyy HH:mm` in local time (mockup: `01/02/2017`). Ordered by server time; auto-scroll to newest unless the user scrolled up. |
+| FR-6 | Persistence between sessions | Rooms and messages are stored server-side; after a reload or from another browser every room and its history is intact. |
+| FR-7 | Real-time delivery ("Feeling Lucky") | A posted message appears in every client viewing that room within ~1 s; a new room appears on every map. After a dropped connection the client reconnects and back-fills what it missed. |
+| FR-8 | Robustness | Bad input (invalid JSON, oversized payloads, unknown room, malformed coordinates) gets a 4xx with a safe body, never a crash or stack trace. A double-click does not create two rooms for one gesture; a retried message with the same id is stored once. |
+| FR-9 | Accessibility baseline | Keyboard: markers and room list reachable, Enter sends, Escape closes the panel. Screen readers: labelled `role="log"` live region, labelled inputs, announced errors. Reduced motion respected. |
+
+## 3. Assumptions and ambiguities surfaced
+
+- **The reference tile URL is dead** (`tile.stamen.com` → HTTP 404 since Stamen moved to Stadia Maps in 2023; verified 2026-09-04) and is plain `http://`. We keep the exact center, zoom and watercolor style through Stadia's endpoint (keyless on localhost, domain-registered when deployed); the tile URL is configuration so reviewers can switch to OpenStreetMap.
+- **The CodePen contains only the map**; the panel is designed from the mockup.
+- **Identity is a free-text username** per browser, sent with every message. No auth: the brief never asks for it and building it would be over-engineering.
+- **"Feeling Lucky" is treated as expected** for a senior submission; the app still works with the socket down (HTTP persists everything, live updates degrade gracefully).
+- **Pin position is the click point**; drag-to-adjust and confirm-on-create are future work.
+- **Scale:** ~500 monthly users, ~50 concurrent connections, ~50,000 messages per month, unlimited retention, all rooms loaded at start (a few hundred). This sizes the single-instance design and the cost estimate; the multi-instance path and a viewport (bounding-box) query are documented as next steps.
+- **Delivery guarantee:** at-least-once with client-generated idempotent ids and backfill from the last seen message, so short disconnections lose nothing; duplicates are dropped by id.
+- **Deadline:** Monday 2026-09-07 morning; scope sized for three focused days. These assumptions were sent to Wolfpack as questions with defaults; answers that change them update this section and are referenced in the affected PR.
+
+## 4. Technical decisions
+
+**Guiding rule: every dependency earns its place.** A package stays when it removes real work or risk and goes when a built-in or a few dozen lines of stable code do the same job. The result is 11 runtime and 19 development packages (6 of them type definitions); `architecture.md` §1 records each one with the alternative considered and the reason, plus what was replaced by built-ins and what was evaluated and not used.
+
+**Stack.** Node 24 LTS running TypeScript natively (no server build step), Hono 4 with the built-in WebSocket support of its Node adapter on `ws`, Zod 4 schemas shared by server and client, React 19.2 + Vite 8, Leaflet 1.9 + react-leaflet 5, Tailwind 4, TypeScript 7, Biome for lint and format, Vitest 5, npm workspaces, Docker on `node:24-alpine`. Node rather than Bun because the job description says Node; Hono rather than Fastify or NestJS because three packages cover routing, validation, WebSocket and end-to-end types (`hc<AppType>`) with HTTP-free tests.
+
+**Data model.** PostgreSQL, no ORM. Without `DATABASE_URL` the server runs PGlite (Postgres in WASM, data in `./data/pg`, nothing to install); with it, real Postgres (`docker compose`, production). Both drivers expose `query(text, params)`, unified by a five-line `Db` interface. Two tables: `rooms(id uuid, number identity, name, lat, lng, created_at)` and `messages(id uuid, room_id, username, body, created_at)` with an index on `(room_id, created_at, id)`. Migrations are numbered SQL files applied at boot by a small runner; rows are validated with Zod on the way out, so types need no ORM. The identity column names rooms without a count-then-insert race; message ids are client-generated so retries are idempotent; ordering is server time with id as tiebreak.
+
+**Real-time delivery.** Writes go over HTTP (`POST /api/rooms`, `POST /api/rooms/:id/messages`: validated, rate-limited, testable); the WebSocket carries only `subscribe`/`unsubscribe`/`ping` from the client and `room:created`/`message:created`/`pong`/`error` from the server, all Zod-validated. Insert first, respond, then broadcast to the room (sender included; the client de-duplicates by id). Heartbeat every 30 s, slow consumers dropped, `Origin` allowlist on upgrade, 16 KiB payload cap, per-connection and per-IP limits. Clients reconnect with jittered backoff and back-fill with `?after=<lastSeenId>`. Fan-out sits behind a `Broadcaster` interface: in-process now, Postgres `LISTEN/NOTIFY` or Redis pub/sub when a second instance exists (raw WebSockets need no sticky sessions).
+
+**State management.** One framework-free store in `packages/shared` holds rooms, messages per room, connection status and the username; the socket feeds it live, HTTP feeds it on load and on reconnect (backfill). React subscribes with `useSyncExternalStore`; no query cache library, because the socket is the source of truth and a fetch cache would be a second cache. The selected room lives in the URL (`?room=<id>`). The form uses `useActionState` and `useOptimistic`; the username sits behind a storage adapter (localStorage now, native storage later).
+
+**Quality gates.** Every change is a branch and a pull request; CI runs Biome (lint + format), `tsc --noEmit` per workspace, Vitest with 100% coverage thresholds (statements, branches, functions, lines) over `packages/shared`, `apps/server/src` and `apps/web/src`, the Vite build, `npm audit` and the Docker build; versioned git hooks run the same checks locally, with no hook packages. Coverage-ignore comments are not allowed. Self-review: an independent reviewer agent in a fresh context plus the built-in `/code-review`; every finding is fixed, not fixed with a reason, or marked for a human, and the report is committed.
+
+**Mobile readiness.** `packages/shared` (schemas, protocol, store, client) has no DOM dependency; the origin allowlist and storage adapter already accommodate a native shell. Path: PWA manifest (hours, hand-written, if time allows) → Capacitor wrapper (days) → Expo app reusing the shared package (weeks).
+
+## 5. Delivery and verification
+
+Ten small pull requests in this order: PRD → scaffold and AI configuration → shared schema and server → map and pins → messages → real-time → accessibility and PWA → infra estimate → self-review and fixes → README and final report (`delivery-plan.md`).
+
+**End-to-end check before submission:** fresh clone → `npm install && npm run dev` (and separately `docker compose up --build`) → two browsers → click the map → pin and "Chatroom 1" panel in both → post from each → messages appear live in both → reload → everything persists → click the other marker → panel switches → `npm run check` green.
+
+## 6. Open questions sent to Wolfpack
+
+Each question fixes one design decision; the default is what the implementation assumes until answered.
+
+1. Expected scale (concurrent users, rooms, messages) → single instance with in-process fan-out vs. multi-instance with LISTEN/NOTIFY or Redis; cost sizing (default: ~500 MAU / 50 concurrent / 50k messages a month, single instance).
+2. History and retention → full load vs. cursor pagination, retention job (default: unlimited retention, cursor pagination of 200).
+3. Delivery guarantee on reconnect → at-least-once with dedupe vs. at-most-once with reload (default: at-least-once).
+4. Scope and access → is "Feeling Lucky" evaluated; public rooms with username only (default: yes and yes).
+5. Geographic scope → all rooms at start vs. viewport bounding-box query (default: all rooms; bounding box as next step).
+6. Evaluation environment and deadline → local run vs. hosted link; Monday morning cutoff (default: one-command local run; Monday 09:00).

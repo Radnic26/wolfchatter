@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+*.tsbuildinfo
+
+# Tests
+coverage/
+.vitest/
+
+# Local data and environment
+data/
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS and editors (shared VS Code settings are versioned on purpose)
+.DS_Store
+Thumbs.db
+.idea/
+*.swp

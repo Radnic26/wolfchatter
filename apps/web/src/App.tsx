@@ -6,6 +6,7 @@ import { browserUsernameStorage } from "./lib/browser-username-storage.ts";
 import { randomUuid } from "./lib/random-uuid.ts";
 import { socketUrl } from "./lib/socket-url.ts";
 import { ChatMap } from "./map/chat-map.tsx";
+import { focusTheMap } from "./map/focus-the-map.ts";
 import { fetchMessages } from "./messages/message-requests.ts";
 import { loadRooms, openRoomAt } from "./rooms/room-actions.ts";
 import { RoomPanel } from "./rooms/room-panel.tsx";
@@ -54,10 +55,25 @@ export function App() {
     }
   }
 
+  /** The room is let go of, and the keyboard goes back to the map the pins are on. */
+  function closeRoom() {
+    setFailedToOpen(false);
+    selectRoom(null);
+    focusTheMap();
+  }
+
   const room = rooms.find((open) => open.id === selectedRoomId);
 
   return (
     <div className="flex h-dvh flex-col bg-ground text-ink">
+      {/* Every pin on the map is a stop on the way to the composer, so this is the way past
+          them. It shows itself only once it has the focus, which is the only time it helps. */}
+      <a
+        href="#chatroom"
+        className="sr-only focus:not-sr-only focus:absolute focus:z-[2000] focus:m-2 focus:rounded-lg focus:border focus:border-rule focus:bg-ground focus:px-3 focus:py-2 focus:text-sm"
+      >
+        Skip to the chatroom
+      </a>
       <AppHeader connection={connection} />
       <div className="relative flex min-h-0 flex-1 flex-col md:flex-row">
         <div className="min-h-0 flex-1">
@@ -75,6 +91,7 @@ export function App() {
           room={room}
           failedToOpen={failedToOpen}
           openExpanded={room !== undefined && room.id === tappedRoomId}
+          onClose={closeRoom}
         />
       </div>
     </div>

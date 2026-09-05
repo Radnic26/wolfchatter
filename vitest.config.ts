@@ -14,6 +14,14 @@ export default defineConfig({
       },
       {
         test: {
+          name: "shared",
+          root: "packages/shared",
+          environment: "node",
+          include: ["test/**/*.test.ts"],
+        },
+      },
+      {
+        test: {
           name: "start",
           root: "scripts/start",
           environment: "node",
@@ -33,7 +41,12 @@ export default defineConfig({
     ],
     coverage: {
       provider: "v8",
-      include: ["apps/server/src/**/*.ts", "apps/web/src/**/*.{ts,tsx}", "scripts/start/*.ts"],
+      include: [
+        "apps/server/src/**/*.ts",
+        "apps/web/src/**/*.{ts,tsx}",
+        "packages/shared/src/**/*.ts",
+        "scripts/start/*.ts",
+      ],
       // Process entry points wire the parts together and are covered by running the app, not by unit tests.
       exclude: ["apps/server/src/index.ts", "apps/web/src/main.tsx", "scripts/start/main.ts"],
       thresholds: { 100: true },

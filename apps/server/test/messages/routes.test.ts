@@ -210,6 +210,35 @@ describe.each(databasesUnderTest)("the messages API on $name", (database) => {
     await expect(response.json()).resolves.toMatchObject({ error: { code: "payload_too_large" } });
   });
 
+  it("announces a message it stored, to whoever is in that room", async () => {
+    const room = await api.createRoom();
+    const written = posted("hello");
+
+    await api.post(`/api/rooms/${room.id}/messages`, written);
+
+    expect(api.published.filter((frame) => frame.type === "message:created")).toEqual([
+      { type: "message:created", message: expect.objectContaining({ ...written, roomId: room.id }) },
+    ]);
+  });
+
+  it("announces a message once, however many times the send is retried", async () => {
+    const room = await api.createRoom();
+    const written = posted("hello");
+
+    await api.post(`/api/rooms/${room.id}/messages`, written);
+    await api.post(`/api/rooms/${room.id}/messages`, written);
+
+    expect(api.published.filter((frame) => frame.type === "message:created")).toHaveLength(1);
+  });
+
+  it("announces nothing it refused to store", async () => {
+    const room = await api.createRoom();
+
+    await api.post(`/api/rooms/${room.id}/messages`, { id: randomUUID(), username: "", body: "hi" });
+
+    expect(api.published.filter((frame) => frame.type === "message:created")).toEqual([]);
+  });
+
   it("stores nothing when it refused the message", async () => {
     const room = await api.createRoom();
 

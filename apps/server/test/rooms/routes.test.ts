@@ -105,6 +105,29 @@ describe.each(databasesUnderTest)("the rooms API on $name", (database) => {
     await expect((await api.request("/api/rooms")).json()).resolves.toEqual([]);
   });
 
+  it("announces a room it opened, so every map draws the pin without being asked", async () => {
+    const gesture = click();
+
+    await api.post("/api/rooms", gesture);
+
+    expect(api.published).toEqual([{ type: "room:created", room: expect.objectContaining(gesture) }]);
+  });
+
+  it("announces a room once, however many times the click is retried", async () => {
+    const gesture = click();
+
+    await api.post("/api/rooms", gesture);
+    await api.post("/api/rooms", gesture);
+
+    expect(api.published).toHaveLength(1);
+  });
+
+  it("announces nothing it refused to store", async () => {
+    await api.post("/api/rooms", click({ lat: 91, lng: 0 }));
+
+    expect(api.published).toEqual([]);
+  });
+
   it("keeps the reason out of the body and puts it in the log", async () => {
     const response = await api.post("/api/rooms", click({ lat: 91, lng: 0 }));
 

@@ -42,13 +42,12 @@ if [ -n "$edited_file" ]; then
 	esac
 fi
 
-case "$bash_command" in
-*"git push"*)
-	case "$bash_command" in
-	*--force* | *" -f "* | *" -f" | *" +"*)
-		block "force push. Rewriting a shared branch is Radu's call, made by hand, never the tooling's."
-		;;
-	esac
+# Split the command first: judging the whole line would read the -f of an unrelated
+# `pkill -f` as a force push and block a commit that was never one.
+push_commands=$(printf '%s\n' "$bash_command" | tr ';|&' '\n' | grep -F 'git push' || [ $? -eq 1 ])
+case "$push_commands" in
+*--force* | *" -f "* | *" -f" | *" +"*)
+	block "force push. Rewriting a shared branch is Radu's call, made by hand, never the tooling's."
 	;;
 esac
 

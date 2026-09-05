@@ -24,6 +24,9 @@
    in a dark-mode variant. The neutrals carry a slight pink bias on purpose. */
 @theme {
   --color-accent: light-dark(#ec2a6e, #ff4d86);
+  /* The same accent, dark enough on the light ground to carry text: 4.58:1 against 3.81:1,
+     which is the line WCAG draws between a mark and a word. `brand.md` §1 has the table. */
+  --color-accent-strong: light-dark(#d42663, #ff4d86);
   --color-ink: light-dark(#141216, #f3eff2);
   --color-ground: light-dark(#f8f6f7, #131114);
   --color-rule: light-dark(#e5dfe3, #2e2930);
@@ -31,8 +34,9 @@
   --font-display: "Archivo", ui-sans-serif, system-ui, sans-serif;
   --font-script: "Kaushan Script", ui-serif, cursive;
 
-  /* The height of the collapsed sheet. Named because the map's tile credit has to clear it. */
+  /* The two heights of the sheet. Named because the map's tile credit has to clear both. */
   --spacing-peek: 4.5rem;
+  --spacing-sheet: 70dvh;
 }
 
 :root {
@@ -40,9 +44,14 @@
 }
 
 /* Crediting the tiles is a licence term, not decoration, so the sheet lying over the map
-   below 768 px is not allowed to sit on top of it. */
+   below 768 px is not allowed to sit on top of it — at either of the heights it takes.
+   The panel reports its own state, which is what lets the credit follow it up. */
 @media (width < 48rem) {
   .leaflet-bottom.leaflet-right {
     bottom: var(--spacing-peek);
+  }
+
+  body:has([data-expanded="true"]) .leaflet-bottom.leaflet-right {
+    bottom: var(--spacing-sheet);
   }
 }

@@ -44,7 +44,8 @@ export function parsePortAnswer(input: string): number | undefined {
   return port >= 1 && port <= 65535 ? port : undefined;
 }
 
-/** Node 24.16 is where `crypto.randomUUIDv7()` lands, and the server uses it for message ids. */
+/** The floor is the runtime `package.json` asks for: the Node 24 LTS line that runs the
+ * server's TypeScript with no build step. */
 export function isSupportedNodeVersion(version: string): boolean {
   const parsed = /^v?(\d+)\.(\d+)\./.exec(version);
   if (parsed === null) return false;

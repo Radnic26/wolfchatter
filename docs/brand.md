@@ -10,22 +10,30 @@ Four roles, no more. A component names a role and never a hex, so a dark theme c
 
 | Role | Token | Light | Dark | What it is for |
 |---|---|---|---|---|
-| Accent | `--color-accent` | `#EC2A6E` | `#FF4D86` | The one hot colour: the selected marker, the primary action, the live indicator. Never a background for long text. |
+| Accent | `--color-accent` | `#EC2A6E` | `#FF4D86` | The one hot colour, for everything that is **not** text: the selected marker, the live indicator, the border of a field that was refused. |
+| Accent, strong | `--color-accent-strong` | `#D42663` | `#FF4D86` | The same accent wherever text is involved — as the colour of the words, or as the ground beneath them. Identical in the dark theme, where the hot accent already carries text. |
 | Ink | `--color-ink` | `#141216` | `#F3EFF2` | Every glyph. Secondary text is the same ink at reduced alpha (`text-ink/70`), never a fifth colour. |
 | Ground | `--color-ground` | `#F8F6F7` | `#131114` | The surface everything sits on: page, panel, sheet. |
 | Rule | `--color-rule` | `#E5DFE3` | `#2E2930` | Hairlines and borders. Not for text, which would fail contrast. |
 
 The neutrals carry a slight pink bias on purpose, so the accent reads as part of the palette rather than dropped onto grey.
 
-**Contrast**, measured rather than assumed:
+**Contrast**, measured rather than assumed — the alpha rows are read back from what Blink actually paints on the ground, not computed from the token:
 
 | Pair | Light | Dark |
 |---|---|---|
 | Ink on ground | 17.30:1 | 16.49:1 |
-| Ink at 70% on ground | 6.48:1 | — |
+| Ink at 70% on ground | 6.75:1 | 8.38:1 |
+| Ink at 60% on ground | 4.76:1 | 6.42:1 |
+| Ink at 40% on ground | **2.56:1** | **3.52:1** |
 | Accent on ground | **3.81:1** | 5.96:1 |
+| Accent-strong on ground, and ground on accent-strong | 4.58:1 | 5.96:1 |
 
-Body text passes WCAG AAA in either theme. The accent does not: at 3.81:1 on the light ground it clears the 3:1 that AA asks of large text, marks, borders and other non-text elements, but it is **below the 4.5:1 that normal body text needs**. So the accent draws the selected marker, the live indicator, hairlines and large or bold labels — never small print. Darkening it to `#D42663` would reach 4.58:1 and make it safe everywhere, at the cost of some of its heat; that is a brand decision, not a code one, and it has not been taken.
+Body text passes WCAG AAA in either theme. The accent does not: at 3.81:1 on the light ground it clears the 3:1 that AA asks of marks, borders and other non-text elements, but it is **below the 4.5:1 that normal text needs** — and contrast is symmetric, so white-on-accent fails in exactly the same way a button label does.
+
+**The decision, taken in delivery-plan PR 6:** the palette keeps both. `--color-accent` stays the brand's hot pink and is spent only where WCAG asks 3:1 — the selected marker, the live indicator, the border of a refused field — which is also what the mark files are drawn in, so nothing has to be regenerated. `--color-accent-strong` is the same colour darkened to `#D42663` (4.58:1) and is the only one allowed near a word: the inline error under a field, and the fill of the Submit button, whose label is ground on accent. In the dark theme the hot accent already reaches 5.96:1, so the two tokens are the same colour there and the theme loses none of its heat. The alternative — darkening the one accent everywhere — was rejected because the colour is baked into thirteen SVG marks that would then no longer match the interface.
+
+**Ink at reduced alpha is text too.** `text-ink/70` and `text-ink/60` clear 4.5:1 in both themes and are the two steps for secondary copy: 70% for panel prose, 60% for timestamps and the peek's preview. `text-ink/40` does not clear it in either theme and is not a text colour, which is why a placeholder — the visible label of a field whose real label is hidden — sits at 60%.
 
 ## 2. Type
 

@@ -5,6 +5,7 @@ import { type ChatStore, createChatStore, type MapRoom } from "@wolfchatter/shar
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { RoomChat } from "../../src/messages/room-chat.tsx";
 import { useRoomMessages } from "../../src/messages/use-chat-store.ts";
+import { type ChatClientDouble, fakeChatClient } from "../support/chat-client.ts";
 
 const room: MapRoom = {
   status: "stored",
@@ -16,8 +17,8 @@ const room: MapRoom = {
 };
 
 /** What the panel does around the chat: hand it the room's messages as the store publishes them. */
-function Chatting({ store }: { store: ChatStore }) {
-  return <RoomChat store={store} room={room} messages={useRoomMessages(store, room.id)} />;
+function Chatting({ store, client }: { store: ChatStore; client: ChatClientDouble }) {
+  return <RoomChat store={store} client={client} room={room} messages={useRoomMessages(store, room.id)} />;
 }
 
 type Posted = { id: string; username: string; body: string };
@@ -60,6 +61,7 @@ function serve() {
 }
 
 let store: ChatStore;
+let client: ChatClientDouble;
 
 async function write(user: ReturnType<typeof userEvent.setup>, body: string) {
   await user.type(screen.getByPlaceholderText("write your user name here"), "ana");
@@ -69,6 +71,10 @@ async function write(user: ReturnType<typeof userEvent.setup>, body: string) {
 
 beforeEach(() => {
   store = createChatStore();
+  client = fakeChatClient();
+  // Following a room is what loads it, and a room nobody has written in loads as an empty
+  // page rather than as nothing at all — which is what the real client does.
+  client.answerSubscribe = async (roomId) => store.setMessages(roomId, []);
 });
 
 afterEach(() => {
@@ -80,7 +86,7 @@ describe("RoomChat", () => {
   it("shows the message the moment it is written, before the server has stored it", async () => {
     const user = userEvent.setup();
     const server = serve();
-    render(<Chatting store={store} />);
+    render(<Chatting store={store} client={client} />);
 
     await write(user, "hello");
 
@@ -95,7 +101,7 @@ describe("RoomChat", () => {
   it("keeps one copy of the message when the server echoes it back under the same id", async () => {
     const user = userEvent.setup();
     const server = serve();
-    render(<Chatting store={store} />);
+    render(<Chatting store={store} client={client} />);
     await write(user, "hello");
 
     server.release({ id: "", username: "ana", body: "hello" });
@@ -107,7 +113,7 @@ describe("RoomChat", () => {
   it("shows one copy when the message reaches the room while it is still being sent", async () => {
     const user = userEvent.setup();
     const server = serve();
-    render(<Chatting store={store} />);
+    render(<Chatting store={store} client={client} />);
     await write(user, "hello");
 
     // The room learns about the message from somewhere else — the socket, once there is one —
@@ -127,7 +133,7 @@ describe("RoomChat", () => {
   it("shows the server's timestamp once it has one, not the sender's own clock", async () => {
     const user = userEvent.setup();
     const server = serve();
-    render(<Chatting store={store} />);
+    render(<Chatting store={store} client={client} />);
     await write(user, "hello");
 
     server.release({ id: "", username: "ana", body: "hello" });
@@ -146,7 +152,7 @@ describe("RoomChat", () => {
           : Response.json([]),
       ),
     );
-    render(<Chatting store={store} />);
+    render(<Chatting store={store} client={client} />);
 
     await write(user, "hello");
 

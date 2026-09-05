@@ -1,14 +1,21 @@
 import { zValidator } from "@hono/zod-validator";
 import { messageHistoryQuerySchema, newMessageSchema, roomIdParamSchema } from "@wolfchatter/shared/schema";
-import { Hono } from "hono";
+import { Hono, type MiddlewareHandler } from "hono";
 import type { Queryable } from "../db/db.ts";
 import { failWith } from "../lib/api-error.ts";
 import { limitBody } from "../lib/limit-body.ts";
 import { rejectInvalidInput } from "../lib/reject-invalid-input.ts";
 import { roomExists } from "../rooms/queries.ts";
+import type { Broadcaster } from "../ws/broadcaster.ts";
 import { findMessage, insertMessage, listMessages } from "./queries.ts";
 
-export function createMessageRoutes(db: Queryable) {
+export interface MessageRoutesDependencies {
+  db: Queryable;
+  broadcaster: Broadcaster;
+  limitWrites: MiddlewareHandler;
+}
+
+export function createMessageRoutes({ db, broadcaster, limitWrites }: MessageRoutesDependencies) {
   return new Hono()
     .get(
       "/rooms/:id/messages",
@@ -32,6 +39,7 @@ export function createMessageRoutes(db: Queryable) {
     )
     .post(
       "/rooms/:id/messages",
+      limitWrites,
       limitBody,
       zValidator("param", roomIdParamSchema, rejectInvalidInput),
       zValidator("json", newMessageSchema, rejectInvalidInput),
@@ -46,7 +54,10 @@ export function createMessageRoutes(db: Queryable) {
           return failWith(c, "message_id_taken", 409);
         }
 
-        // A retry of a message that is already stored is a success, not a new message.
+        // Committed first, then announced, and only when it is new: a retry of a message
+        // already stored is a success, and repeating it would show the room a second copy.
+        if (result.outcome === "created") broadcaster.publishMessageCreated(result.message);
+
         return c.json(result.message, result.outcome === "created" ? 201 : 200);
       },
     );

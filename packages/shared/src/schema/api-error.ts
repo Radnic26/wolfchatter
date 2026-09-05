@@ -9,6 +9,7 @@ export const errorCodeSchema = z.enum([
   "invalid_frame",
   "invalid_cursor",
   "message_id_taken",
+  "rate_limited",
   "room_not_found",
   "not_found",
   "payload_too_large",

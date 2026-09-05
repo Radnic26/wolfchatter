@@ -31,6 +31,15 @@ describe("fetchMessages", () => {
     expect(String(fetching.mock.calls[0]?.[0])).toBe(`/api/rooms/${roomId}/messages`);
   });
 
+  it("asks only for what has been said since a message, which is what a reconnect missed", async () => {
+    const fetching = answerWith([storedMessage]);
+    const lastSeen = randomUUID();
+
+    await fetchMessages(roomId, lastSeen);
+
+    expect(String(fetching.mock.calls[0]?.[0])).toBe(`/api/rooms/${roomId}/messages?after=${lastSeen}`);
+  });
+
   it("returns the messages in the order the server sent them", async () => {
     const older = { ...storedMessage, id: randomUUID(), body: "older" };
     answerWith([older, storedMessage]);

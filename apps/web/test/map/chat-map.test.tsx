@@ -60,6 +60,19 @@ describe("ChatMap", () => {
     expect(screen.getByRole("button", { name: "New chatroom" })).toBeInTheDocument();
   });
 
+  it("renames the pin once the server has named the room, with no reload", () => {
+    const opening: MapRoom = { status: "pending", id: cluj.id, lat: cluj.lat, lng: cluj.lng };
+    const { rerender } = render(
+      <ChatMap rooms={[opening]} selectedRoomId={opening.id} onSelectRoom={vi.fn()} onTapMap={vi.fn()} />,
+    );
+    expect(screen.getByRole("button", { name: "New chatroom" })).toBeInTheDocument();
+
+    rerender(<ChatMap rooms={[cluj]} selectedRoomId={cluj.id} onSelectRoom={vi.fn()} onTapMap={vi.fn()} />);
+
+    expect(screen.getByRole("button", { name: "Chatroom 1" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "New chatroom" })).not.toBeInTheDocument();
+  });
+
   it("draws the open room's marker in the accent, and the rest in ink", () => {
     renderMap([cluj, lisbon], lisbon.id);
 

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createApp } from "../src/app.ts";
 import type { Db, Queryable } from "../src/db/db.ts";
+import { appOver } from "./support/api.ts";
 import { embeddedDatabase, openMigratedDatabase } from "./support/databases.ts";
 
 const emptyDatabase: Queryable = {
@@ -10,7 +10,7 @@ const emptyDatabase: Queryable = {
 
 describe("GET /api/health", () => {
   it("reports the server as ok", async () => {
-    const response = await createApp(emptyDatabase).request("/api/health");
+    const response = await appOver(emptyDatabase).request("/api/health");
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ status: "ok" });
@@ -31,7 +31,7 @@ describe("a request that matches no route", () => {
     ["a method the route does not serve", "/api/rooms", "DELETE"],
     ["a path outside the api", "/nothing-here", undefined],
   ])("answers %s with the error shape every client parses", async (_case, path, method) => {
-    const response = await createApp(emptyDatabase).request(path, method ? { method } : undefined);
+    const response = await appOver(emptyDatabase).request(path, method ? { method } : undefined);
 
     expect(response.status).toBe(404);
     expect(response.headers.get("content-type")).toContain("application/json");
@@ -58,7 +58,7 @@ describe("an unexpected failure", () => {
       exec: async () => undefined,
     };
 
-    const response = await createApp(brokenDatabase).request("/api/rooms");
+    const response = await appOver(brokenDatabase).request("/api/rooms");
 
     expect(response.status).toBe(500);
     const body = await response.json();
@@ -75,7 +75,7 @@ describe("an unexpected failure", () => {
       exec: async () => undefined,
     };
 
-    const response = await createApp(brokenDatabase).request("/api/rooms");
+    const response = await appOver(brokenDatabase).request("/api/rooms");
 
     const { error } = (await response.json()) as { error: { requestId: string } };
     const line = logged.mock.calls.map(([text]) => String(text)).join("\n");
@@ -96,7 +96,7 @@ describe("the app over the real schema", () => {
     // against a table hand-written to match.
     db = await openMigratedDatabase(embeddedDatabase);
 
-    const response = await createApp(db).request("/api/rooms");
+    const response = await appOver(db).request("/api/rooms");
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual([]);

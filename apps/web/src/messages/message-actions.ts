@@ -2,11 +2,7 @@ import type { ChatStore } from "@wolfchatter/shared/client";
 import type { Message } from "@wolfchatter/shared/schema";
 import { randomUuid } from "../lib/random-uuid.ts";
 import type { MessageDraft } from "./message-draft.ts";
-import { fetchMessages, postMessage } from "./message-requests.ts";
-
-export async function loadMessages(store: ChatStore, roomId: string): Promise<void> {
-  store.setMessages(roomId, await fetchMessages(roomId));
-}
+import { postMessage } from "./message-requests.ts";
 
 /**
  * The message its sender sees before the round trip. The id is minted here and travels with

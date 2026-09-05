@@ -3,9 +3,11 @@ import {
   isSupportedNodeVersion,
   parsePortAnswer,
   parseRunModeAnswer,
+  parseTileSourceAnswer,
   shouldAskQuestions,
 } from "../answers.ts";
 import { offeredRunModes } from "../run-mode.ts";
+import { offeredTileSources } from "../tile-source.ts";
 
 describe("shouldAskQuestions", () => {
   it("asks when a person is at a terminal", () => {
@@ -57,6 +59,27 @@ describe("parseRunModeAnswer", () => {
   it("only offers the embedded option when Docker is missing", () => {
     expect(parseRunModeAnswer("1", offeredRunModes(false))).toBe("embedded");
     expect(parseRunModeAnswer("2", offeredRunModes(false))).toBeUndefined();
+  });
+});
+
+describe("parseTileSourceAnswer", () => {
+  it("reads the listed position, not the source name", () => {
+    expect(parseTileSourceAnswer("1", offeredTileSources)).toBe("watercolor");
+    expect(parseTileSourceAnswer("2", offeredTileSources)).toBe("osm");
+  });
+
+  it("tolerates surrounding whitespace", () => {
+    expect(parseTileSourceAnswer("  2  ", offeredTileSources)).toBe("osm");
+  });
+
+  it("rejects a position nobody offered", () => {
+    expect(parseTileSourceAnswer("3", offeredTileSources)).toBeUndefined();
+    expect(parseTileSourceAnswer("0", offeredTileSources)).toBeUndefined();
+  });
+
+  it("rejects anything that is not a number, so Enter keeps the default", () => {
+    expect(parseTileSourceAnswer("osm", offeredTileSources)).toBeUndefined();
+    expect(parseTileSourceAnswer("", offeredTileSources)).toBeUndefined();
   });
 });
 

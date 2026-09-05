@@ -50,7 +50,7 @@ The brief grades output quality and says structure and readability matter, for t
 
 ## Gotchas
 
-- Leaflet: render `MapContainer` once with a fixed height, never inside `Suspense`. Its `center` and `zoom` props are read once at mount, so move the view with `useMap().flyTo`. Pass explicit `L.icon` / `L.divIcon` instances rather than relying on the default icon paths, call `invalidateSize()` when the panel opens or closes, and mock `react-leaflet` in component tests.
+- Leaflet: render `MapContainer` once with a fixed height, never inside `Suspense`. Its `center` and `zoom` props are read once at mount, so move the view with `useMap().flyTo`. Pass explicit `L.icon` / `L.divIcon` instances rather than relying on the default icon paths, call `invalidateSize()` whenever the map's own box changes size (the sheet lies over the map and the wide layout keeps its column, so as of PR 5 it never does), and mock `react-leaflet` in component tests.
 - Hono: keep the routes chained onto one instance or `hc<AppType>` loses the response types. Handlers are `async` and return the response; a `.then()` chain breaks the same inference. No header-mutating middleware on the `/ws` route.
 - PGlite holds a single exclusive connection to its data directory, so tests use `memory://` and a test run cannot share `./data/pg` with a running dev server.
 - When compacting, keep the list of modified files and the commands still to run.

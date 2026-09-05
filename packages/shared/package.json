@@ -5,6 +5,7 @@
   "type": "module",
   "description": "Schemas, protocol and client state shared by the server, the web app and any future native shell",
   "exports": {
+    "./client": "./src/client/index.ts",
     "./protocol": "./src/protocol/index.ts",
     "./schema": "./src/schema/index.ts"
   },

@@ -7,12 +7,19 @@ import {
   isSupportedNodeVersion,
   parsePortAnswer,
   parseRunModeAnswer,
+  parseTileSourceAnswer,
   shouldAskQuestions,
 } from "./answers.ts";
 import { renderEnvFile } from "./env-file.ts";
 import { planStart } from "./plan.ts";
-import { renderDockerMissingNotice, renderReady, renderRunModeQuestion } from "./prompts.ts";
+import {
+  renderDockerMissingNotice,
+  renderReady,
+  renderRunModeQuestion,
+  renderTileSourceQuestion,
+} from "./prompts.ts";
 import { defaultRunMode, offeredRunModes, usesDockerDatabase } from "./run-mode.ts";
+import { defaultTileSource, offeredTileSources } from "./tile-source.ts";
 
 const projectRoot = new URL("../../", import.meta.url);
 
@@ -50,8 +57,12 @@ async function ask(hasDocker: boolean): Promise<Answers> {
   const portInput = await readline.question(`Port for the API [${defaultPort}]: `);
   const port = parsePortAnswer(portInput) ?? defaultPort;
 
+  console.log(renderTileSourceQuestion(offeredTileSources));
+  const tilesInput = await readline.question("Choose [1]: ");
+  const tiles = parseTileSourceAnswer(tilesInput, offeredTileSources) ?? defaultTileSource;
+
   readline.close();
-  return { mode, port, databasePassword: crypto.randomUUID() };
+  return { mode, port, tiles, databasePassword: crypto.randomUUID() };
 }
 
 if (!isSupportedNodeVersion(process.version)) {
@@ -62,7 +73,12 @@ if (!isSupportedNodeVersion(process.version)) {
 const hasDocker = isDockerRunning();
 const answers = shouldAskQuestions(process.argv.slice(2), process.env, process.stdin.isTTY === true)
   ? await ask(hasDocker)
-  : { mode: defaultRunMode(hasDocker), port: defaultPort, databasePassword: crypto.randomUUID() };
+  : {
+      mode: defaultRunMode(hasDocker),
+      port: defaultPort,
+      tiles: defaultTileSource,
+      databasePassword: crypto.randomUUID(),
+    };
 
 // 0600: the file holds the database password this run just generated.
 writeFileSync(new URL(".env", projectRoot), renderEnvFile(answers), { mode: 0o600 });

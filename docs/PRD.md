@@ -19,7 +19,7 @@ Wolfchatter is a real-time chat on a map. A user clicks anywhere on a Leaflet ma
 
 | ID | Requirement | Acceptance criteria |
 |---|---|---|
-| FR-1 | Map layout matching the reference | Browser title "Wolfchatter". Full-viewport Leaflet map, center `[46.7712, 23.6236]`, zoom 5, watercolor tiles, zoom controls top-left, default blue markers. Empty-state panel top-right: "Click on the map to start a chat". |
+| FR-1 | Map layout matching the reference | Browser title "Wolfchatter". Leaflet map filling the viewport under the application header, center `[46.7712, 23.6236]`, zoom 5, watercolor tiles, zoom controls top-left, pin markers in the brand ink and the open room's in the accent (the reference's default blue is replaced by the palette of `brand.md`, and its 25×41 icon by a 44 px target for FR-10). Empty-state panel top-right: "Click on the map to start a chat". |
 | FR-2 | Create a pin on click | One click creates a room at that lat/lng, adds a marker immediately and opens its panel. Rooms are named "Chatroom 1", "Chatroom 2"…, unique even under concurrent creation. |
 | FR-3 | Select an existing pin | Clicking a marker switches the panel: title, message history, highlighted marker. Clicking the map while a room is open creates a new room. |
 | FR-4 | Post messages | Username input ("write your user name here"), message input ("write message here"), Submit; Enter submits. Username 1–32 chars, message 1–500 chars, trimmed; empty input gets an inline error and is never sent. The username is remembered per browser. |

@@ -1,8 +1,14 @@
 import type { RunModeChoice } from "./run-mode.ts";
+import type { TileSourceChoice } from "./tile-source.ts";
 
 export function renderRunModeQuestion(offered: readonly RunModeChoice[]): string {
   const lines = offered.map((choice, index) => `  ${index + 1}) ${choice.label} — ${choice.detail}`);
   return ["How should Wolfchatter run?", ...lines].join("\n");
+}
+
+export function renderTileSourceQuestion(offered: readonly TileSourceChoice[]): string {
+  const lines = offered.map((choice, index) => `  ${index + 1}) ${choice.label} — ${choice.detail}`);
+  return ["Which map tiles?", ...lines].join("\n");
 }
 
 export function renderDockerMissingNotice(): string {

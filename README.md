@@ -90,6 +90,7 @@ Each workspace keeps its tests in its own `test/` folder, mirroring `src/` file 
 | [docs/architecture.md](docs/architecture.md) | The decisions in depth: dependency assessment, rejected alternatives, data model, protocol, quality policy |
 | [docs/brand.md](docs/brand.md) | The brand system: colour roles and their measured contrast, the type scale, the marks and their rules |
 | [docs/delivery-plan.md](docs/delivery-plan.md) | The sequence of pull requests, the time budget and what gets cut first |
+| [docs/infra-and-cost.md](docs/infra-and-cost.md) | What running it costs: staging and production tables, the assumptions behind every number and the thresholds at which the bill changes |
 | [CLAUDE.md](CLAUDE.md) + [.claude/](.claude/) | The AI configuration this repository is built under, committed before the first line of code |
 
 ## Dependencies

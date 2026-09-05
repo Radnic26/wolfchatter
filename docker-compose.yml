@@ -1,0 +1,36 @@
+services:
+  db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: wolfchatter
+      POSTGRES_DB: wolfchatter
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?run ./start-wolfchatter first, it writes .env}
+    ports:
+      - "5432:5432"
+    volumes:
+      # PostgreSQL 18 images keep data in a major-version subdirectory of this path, so the
+      # mount goes one level above the old /var/lib/postgresql/data and survives pg_upgrade.
+      - db-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wolfchatter -d wolfchatter"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    init: true
+
+  app:
+    build: .
+    environment:
+      PORT: ${PORT:-3000}
+      DATABASE_URL: ${DATABASE_URL:?run ./start-wolfchatter first, it writes .env}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000}
+    ports:
+      - "${PORT:-3000}:${PORT:-3000}"
+    depends_on:
+      db:
+        condition: service_healthy
+    # PID 1 in a container gets no default signal handlers; this reaps and forwards for us.
+    init: true
+
+volumes:
+  db-data:

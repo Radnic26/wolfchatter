@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { vi } from "vitest";
 
 type LatLng = { lat: number; lng: number };
@@ -66,18 +66,26 @@ export function mockReactLeaflet() {
       <div data-testid="tiles" data-url={url} data-attribution={attribution} data-max-zoom={maxZoom} />
     ),
 
-    Marker: ({ position, icon, zIndexOffset, title, eventHandlers }: MarkerProps) => (
-      <button
-        type="button"
-        data-testid="marker"
-        data-position={position.join(",")}
-        data-icon={icon.options.html}
-        data-z={zIndexOffset}
-        onClick={eventHandlers.click}
-      >
-        {title}
-      </button>
-    ),
+    Marker: ({ position, icon, zIndexOffset, title, eventHandlers }: MarkerProps) => {
+      // Leaflet writes `title` onto the icon element when it builds it, and react-leaflet
+      // updates only position, icon, z-index, opacity and draggable afterwards. So a name
+      // that arrives after mount never reaches the real map, and a double that renders the
+      // current one would let a test prove something the map does not do.
+      const [nameAtMount] = useState(title);
+
+      return (
+        <button
+          type="button"
+          data-testid="marker"
+          data-position={position.join(",")}
+          data-icon={icon.options.html}
+          data-z={zIndexOffset}
+          onClick={eventHandlers.click}
+        >
+          {nameAtMount}
+        </button>
+      );
+    },
 
     useMap: () => fakeMap,
 

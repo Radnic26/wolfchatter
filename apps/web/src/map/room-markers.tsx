@@ -25,15 +25,19 @@ export const RoomMarkers = memo(function RoomMarkers({
 }: RoomMarkersProps) {
   return rooms.map((room) => {
     const selected = room.id === selectedRoomId;
+    const label = labelFor(room);
     return (
       <Marker
-        key={room.id}
+        // Leaflet takes the name when it builds the icon element and nothing writes it
+        // again, so a pin would still announce itself as new long after the server had
+        // named its room. The name is part of what this marker is, so it goes in the key.
+        key={`${room.id} ${label}`}
         position={[room.lat, room.lng]}
         icon={selected ? selectedPinIcon : pinIcon}
         // The selected pin is the one a click is aimed at, so it is never underneath another.
         zIndexOffset={selected ? 1000 : 0}
-        alt={labelFor(room)}
-        title={labelFor(room)}
+        alt={label}
+        title={label}
         eventHandlers={{ click: () => onSelectRoom(room.id) }}
       />
     );

@@ -38,7 +38,7 @@ Companion to `PRD.md` (which stays within its two-page budget). This document ho
 | husky, lint-staged, commitlint | git hooks | a versioned `.githooks/` folder activated with `git config core.hooksPath` (`npm run hooks`); Biome has `--staged`; Conventional Commits checked by a shell regex | three packages for what three shell scripts do; same convention as the author's other repositories |
 | Drizzle ORM + drizzle-kit | typed queries, schema as code, generated migrations | numbered SQL migrations + a ~30-line runner (`schema_migrations`, one transaction per file); parameterised queries through a five-line `Db` interface implemented by `pg` and PGlite; rows parsed with the shared Zod schemas | two tables and six queries; an ORM would add two packages (one between 0.45 and a 1.0 release candidate) for no typing we do not already get from Zod. Close call; reversible: the SQL files are exactly what Drizzle would generate |
 | TanStack Query | server-state cache | a framework-free `ChatStore` in `packages/shared` fed by the socket (live) and HTTP (load and backfill), read with `useSyncExternalStore` | in a real-time app the socket is the source of truth; a fetch cache on top would be a second cache with its own invalidation; the store is also reusable unchanged in React Native |
-| uuid | id generation | `crypto.randomUUID()` in the browser, `crypto.randomUUIDv7()` in Node ≥ 24.16 | built in |
+| uuid | id generation | `crypto.randomUUID()` in the browser and on the server | built in. Node 24 also exports `randomUUIDv7`, but `@types/node` 24.13 does not declare it yet and nothing here orders by an id, so the extra v7 locality is not worth a type workaround |
 | dotenv, ts-node / tsx, nodemon | env loading, TypeScript execution, watch | `node --env-file-if-exists`, native type-stripping, `node --watch` | built into Node 24 |
 
 ### Evaluated and not used
@@ -58,7 +58,7 @@ Companion to `PRD.md` (which stays within its two-page budget). This document ho
 
 | Layer | Choice | Why | Rejected |
 |---|---|---|---|
-| Runtime | Node 24 LTS (≥ 24.16), native TypeScript type-stripping, no server build step | Active LTS through the deadline; `node app.ts`, `--watch`, `--env-file-if-exists` and `crypto.randomUUIDv7()` all available; matches the job description | Bun (not on Wolfpack's menu; fewer reviewers can run it), Node 26 (LTS only from 2026-10-28) |
+| Runtime | Node 24 LTS (≥ 24.16), native TypeScript type-stripping, no server build step | Active LTS through the deadline; `node app.ts`, `--watch` and `--env-file-if-exists` all available; matches the job description | Bun (not on Wolfpack's menu; fewer reviewers can run it), Node 26 (LTS only from 2026-10-28) |
 | HTTP + WS | Hono 4.13 + `@hono/node-server` 2.1 (built-in WebSocket over `ws` 8.21) + `@hono/zod-validator` | Web-standard `Request`/`Response`; `app.request()` tests without HTTP; `hc<AppType>` gives end-to-end types; plain WebSocket protocol inspectable with curl and devtools | Fastify 5, NestJS 12, Socket.IO, bare `node:http` |
 | Validation | Zod 4.5 schemas in `packages/shared`, used on the server (HTTP bodies, every WS frame, env at boot, DB rows) and on the client (every inbound event) | One source of truth for runtime validation and types | TypeBox, hand-written types |
 | Persistence | PostgreSQL through plain SQL. Driver by env: no `DATABASE_URL` → PGlite (Postgres in WASM, `./data/pg`); `DATABASE_URL` → `pg` | Wolfpack "mainly uses PostgreSQL"; reviewers still get one-command startup; the same SQL runs unchanged on real Postgres; `LISTEN/NOTIFY` exists on both for the scale-out path | SQLite via `node:sqlite` (release candidate; different dialect from production), Drizzle (see §1), Postgres-only (forces Docker on the reviewer) |
@@ -74,9 +74,10 @@ Companion to `PRD.md` (which stays within its two-page budget). This document ho
 ## 3. Data model (PostgreSQL, numbered SQL migrations)
 
 ```
-rooms     id uuid PK (crypto.randomUUIDv7(), server)
+rooms     id uuid PK (crypto.randomUUID(), server)
           number bigint GENERATED ALWAYS AS IDENTITY UNIQUE   -- race-free "Chatroom {number}"
-          name text NOT NULL · lat double precision · lng double precision
+          name text GENERATED ALWAYS AS ('Chatroom ' || number) STORED NOT NULL
+          lat double precision · lng double precision   -- CHECK on both ranges
           created_at timestamptz NOT NULL DEFAULT now()
 messages  id uuid PK (client-generated crypto.randomUUID() = idempotency key)
           room_id uuid NOT NULL REFERENCES rooms(id) ON DELETE CASCADE
@@ -85,11 +86,11 @@ messages  id uuid PK (client-generated crypto.randomUUID() = idempotency key)
           INDEX (room_id, created_at, id)
 ```
 
-- The identity column gives sequential names without a count-then-insert race.
-- Client-generated message ids make retries idempotent (`INSERT … ON CONFLICT DO NOTHING`); the server owns `created_at`, so ordering is `(created_at, id)`, never the client clock.
+- The identity column gives sequential names without a count-then-insert race, and the name is a generated column, so no code path composes it and concurrent creation cannot collide. `number` never leaves the server: the API returns `{id, name, lat, lng, createdAt}`, which also keeps the two drivers from disagreeing over how a `bigint` reaches JavaScript.
+- Client-generated message ids make retries idempotent (`INSERT … ON CONFLICT DO NOTHING`); the server owns `created_at`, so ordering is `(created_at, id)`, never the client clock. A conflict returns no row, so the stored message is read back scoped to the room: the first write wins and is answered again, while an id already spent in another room is a collision, answered `409` rather than by handing over that room's message.
 - Coordinates validated to `[-90, 90]` / `[-180, 180]`; strings trimmed and length-checked at the boundary.
-- Migrations live in `apps/server/src/db/migrations/NNNN_name.sql` and are applied at boot, in order, inside a transaction each, tracked in `schema_migrations`. Rows coming out of the database are parsed with the shared Zod schemas, which is where the TypeScript types come from.
-- `Db` is `{ query<T>(text: string, params?: unknown[]): Promise<{ rows: T[] }>; close(): Promise<void> }`, implemented by `pg.Pool` and `PGlite` with no adapter logic beyond construction.
+- Migrations live in `apps/server/src/db/migrations/NNNN_name.sql` and are applied at boot, in order, inside a transaction each, tracked in `schema_migrations` with a sha-256 of the file: editing a migration that has already run fails the boot instead of drifting silently. Rows coming out of the database are parsed with the shared Zod schemas, which is where the TypeScript types come from.
+- `Db` is `{ query<Row>(text, params?): Promise<{ rows: Row[] }>; exec(text): Promise<void>; transaction(run): Promise<Result>; close(): Promise<void> }`, implemented by `pg.Pool` and `PGlite`. `exec` is the multi-statement form a migration file needs, and `transaction` exists because a pool hands out a different connection per call, so a `BEGIN` and its `COMMIT` have to be pinned to one client. Feature queries take the narrower `Queryable` (`query` and `exec`), which is what makes them work identically inside or outside a transaction.
 
 ## 4. API surface
 
@@ -98,11 +99,11 @@ messages  id uuid PK (client-generated crypto.randomUUID() = idempotency key)
 | `GET /api/health` | liveness for Docker and uptime checks |
 | `GET /api/rooms` | all rooms for the map |
 | `POST /api/rooms {lat, lng}` | create a room → 201 room; broadcasts `room:created` to everyone |
-| `GET /api/rooms/:id/messages?after=<messageId>&limit=200` | history, ascending, cursor by message id (the server resolves the cursor's `created_at`) |
-| `POST /api/rooms/:id/messages {id, username, body}` | post → 201 canonical message; idempotent on `id`; broadcasts `message:created` to room subscribers |
+| `GET /api/rooms/:id/messages?after=<messageId>&limit=200` | history, ascending, cursor by message id (the server resolves the cursor's `created_at`). An unknown room is `404`; a cursor this room never held is `400 invalid_cursor`, because answering with an empty page would tell a client with a broken cursor that it is up to date |
+| `POST /api/rooms/:id/messages {id, username, body}` | post → `201` with the canonical message; a retry of the same id → `200` with the message already stored; the same id in another room → `409 message_id_taken`; broadcasts `message:created` to room subscribers |
 | `GET /ws` | WebSocket upgrade |
 
-Validation uses `zValidator` with the shared Zod schemas, so the typed client `hc<AppType>` infers request and response types.
+Validation uses `zValidator` with the shared Zod schemas, so the typed client `hc<AppType>` infers request and response types. Bodies, path parameters and query strings all go through it, and the validator's own 400 is replaced so the schema is never echoed back to the caller. Responses need no separate schema: every row is parsed by the shared schema on its way out of the database, so a body that reaches `c.json()` has already been validated. Error bodies are `{ error: { code, requestId } }` and nothing else, with the reason logged against that id.
 
 ## 5. Real-time delivery
 
@@ -135,7 +136,7 @@ docs/            PRD, architecture, delivery plan, infra & cost, self-review, wo
 
 ## 8. Quality policy
 
-- **Coverage:** 100% statements, branches, functions and lines, enforced by Vitest thresholds in CI over `packages/shared/src`, `apps/server/src`, `apps/web/src` and `scripts/start`, so the first-run wizard is held to the same bar as the application. Excluded, and listed in the config: process entry points (`apps/server/src/index.ts`, `apps/web/src/main.tsx`, `scripts/start/main.ts`), type declarations, test files. Coverage-ignore comments are not allowed; untestable code is a design smell to fix (inject the dependency, extract the pure function). Tests assert behaviour: inputs → outputs, events, rendered DOM; every error branch has a test with a real bad input.
+- **Coverage:** 100% statements, branches, functions and lines, enforced by Vitest thresholds in CI over `packages/shared/src`, `apps/server/src`, `apps/web/src` and `scripts/start`. The database specs run against every driver the machine can reach: PGlite alone on a clone with no Docker, and PGlite plus a real PostgreSQL 18 service in CI, where each suite gets its own throwaway database so migrations run against a blank server exactly as they do on a first boot, so the first-run wizard is held to the same bar as the application. Excluded, and listed in the config: process entry points (`apps/server/src/index.ts`, `apps/web/src/main.tsx`, `scripts/start/main.ts`), type declarations, test files. Coverage-ignore comments are not allowed; untestable code is a design smell to fix (inject the dependency, extract the pure function). Tests assert behaviour: inputs → outputs, events, rendered DOM; every error branch has a test with a real bad input.
 - **Gates:** Biome (`biome ci`), `tsc --noEmit` per workspace, tests with coverage, `vite build`, `npm audit`, Docker build. The same checks run locally through versioned git hooks (`.githooks/`: Biome on staged files and typecheck before commit, a Conventional Commits check on the message, tests before push). On GitHub the same gates are required status checks on `main` (one job per gate, plus an aggregate `all-green` job that is the required context, so adding a gate later is one line): pull request required, administrators included, no force pushes or deletions, conversation resolution required, merge commits only. The pre-commit hook also refuses any staged `.env*` file other than `.env.example` and any line that looks like a credential (`DATABASE_URL=postgres://…:…@`, `*_KEY=`, `*_TOKEN=`, `*_SECRET=` with a non-placeholder value), so a secret cannot reach the history by accident.
 - **Security controls (PRD NFR-2):** validate at every boundary (Zod on HTTP bodies, params, query and every WS frame), parameterised SQL only, explicit Origin allowlist on HTTP and on the WS upgrade, per-IP and per-connection rate limits (token bucket, in memory), 16 KiB payload cap on both transports, security headers from Hono's `secureHeaders` (CSP with `connect-src` limited to the API and tiles, `nosniff`, `frame-ancestors 'none'`, HSTS only behind TLS), generic 4xx/5xx bodies with a request id, env validated at boot, no secrets in the repo (none are needed; `.env.example` documents defaults), no PII stored or logged, React escaping only, non-root user in the Docker image.
 - **Performance budgets (PRD NFR-1):** Lighthouse Performance ≥ 90 on the production build; initial JS ≤ 250 KB gzipped with Leaflet in its own chunk; click → panel < 100 ms; list endpoints p95 < 50 ms at the assumed size, backed by the `(room_id, created_at, id)` index and cursor pagination; marker layer memoised so message traffic never re-renders it; WS frames carry ids and deltas, never full lists; static assets served with immutable cache headers.

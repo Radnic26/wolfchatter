@@ -2,7 +2,12 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!-- `resizes-content` makes the on-screen keyboard shorten the viewport rather than slide
+         over it, which is what keeps the composer at the bottom of the sheet in reach. -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content"
+    />
     <title>Wolfchatter</title>
     <meta name="description" content="Real-time chat pinned to a map. Click anywhere to open a chatroom." />
     <!-- One file for both themes: the mark carries its own prefers-color-scheme block. -->

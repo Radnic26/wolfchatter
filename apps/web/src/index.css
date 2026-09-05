@@ -1,1 +1,37 @@
 @import "tailwindcss";
+
+/* Served from this origin, so the app looks right with no network and asks nothing of a
+   third party. Both faces carry a real fallback, so a failed load degrades rather than
+   disappears. */
+@font-face {
+  font-family: "Archivo";
+  src: url("/fonts/archivo-800.woff2") format("woff2");
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Kaushan Script";
+  src: url("/fonts/kaushan-script-400.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* One source for every colour in the app. `light-dark()` resolves against the root
+   colour scheme, so a component names a role and never a hex, and never repeats itself
+   in a dark-mode variant. The neutrals carry a slight pink bias on purpose. */
+@theme {
+  --color-accent: light-dark(#ec2a6e, #ff4d86);
+  --color-ink: light-dark(#141216, #f3eff2);
+  --color-ground: light-dark(#f8f6f7, #131114);
+  --color-rule: light-dark(#e5dfe3, #2e2930);
+
+  --font-display: "Archivo", ui-sans-serif, system-ui, sans-serif;
+  --font-script: "Kaushan Script", ui-serif, cursive;
+}
+
+:root {
+  color-scheme: light dark;
+}

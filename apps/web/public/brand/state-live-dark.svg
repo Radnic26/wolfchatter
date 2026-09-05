@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" fill="none" role="img" aria-label="Wolfchatter">
+  <path d="M18 16.5a19.5 19.5 0 0 1 28 0" stroke="#FF4D86" stroke-width="3.5"/>
+  <path d="M24.5 23.5a10.5 10.5 0 0 1 15 0" stroke="#FF4D86" stroke-width="3.5"/>
+  <path d="M10 27 22 52 32 33.5 42 52 54 27" stroke="#F3EFF2" stroke-width="3.5" stroke-linejoin="miter"/>
+</svg>

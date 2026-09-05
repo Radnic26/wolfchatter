@@ -10,6 +10,13 @@ export default defineConfig({
           root: "apps/server",
           environment: "node",
           include: ["test/**/*.test.ts"],
+          // These specs boot a database rather than call a function: PGlite starts a
+          // PostgreSQL compiled to WebAssembly, and the real-driver run creates a
+          // throwaway database per suite. The first test in a file pays about four
+          // seconds of that on a warm laptop, which leaves nothing under the five-second
+          // default on a shared CI runner.
+          testTimeout: 30_000,
+          hookTimeout: 30_000,
         },
       },
       {

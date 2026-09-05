@@ -111,14 +111,22 @@ describe.each(databasesUnderTest)("message queries on $name", (database) => {
 
   it("keeps a burst of messages in the order it accepted them, not in id order", async () => {
     db = await openMigratedDatabase(database);
-    const { roomId, sent } = await roomWithMessages(50);
+    const roomId = await openRoom();
+    const burst = Array.from({ length: 50 }, (_unused, index) => posted(`message ${index}`));
+
+    // One transaction gives every row the same now(), which is what a real burst does to
+    // itself often enough to matter. Ordering on that timestamp would break the tie on
+    // the random client ids and shuffle the conversation; the sequence cannot tie.
+    await db.transaction(async (tx) => {
+      for (const message of burst) {
+        await insertMessage(tx, roomId, message);
+      }
+    });
 
     const history = await listMessages(db, roomId, wholePage);
 
-    // Fifty messages posted this fast share only a handful of timestamps, so ordering by
-    // time alone would fall back to the random ids and shuffle the conversation.
-    expect(history.map((message) => message.body)).toEqual(sent.map((message) => message.body));
-    expect(new Set(history.map((message) => message.createdAt)).size).toBeLessThan(50);
+    expect(history.map((message) => message.body)).toEqual(burst.map((message) => message.body));
+    expect(new Set(history.map((message) => message.createdAt)).size).toBe(1);
   });
 
   it("returns only what came after the cursor", async () => {

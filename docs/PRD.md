@@ -28,6 +28,7 @@ Wolfchatter is a real-time chat on a map. A user clicks anywhere on a Leaflet ma
 | FR-7 | Real-time delivery ("Feeling Lucky") | A posted message appears in every client viewing that room within ~1 s; a new room appears on every map. After a dropped connection the client reconnects and back-fills what it missed. |
 | FR-8 | Robustness | Bad input (invalid JSON, oversized payloads, unknown room, malformed coordinates) gets a 4xx with a safe body, never a crash or stack trace. A double-click does not create two rooms for one gesture; a retried message with the same id is stored once. |
 | FR-9 | Accessibility baseline | Keyboard: markers and room list reachable, Enter sends, Escape closes the panel. Screen readers: labelled `role="log"` live region, labelled inputs, announced errors. Reduced motion respected. |
+| FR-10 | Responsive and mobile friendly | Mobile-first layout, breakpoint 768 px. Below it the room panel is a bottom sheet over the map — collapsed to a peek with the room name and newest message, expandable to ~70% height — so the map stays visible; above it, the two-column reference layout. Touch targets ≥ 44×44 px, markers included. `dvh` never `vh`, inputs ≥ 16 px, safe-area insets honoured. No horizontal scroll at any width, verified at 360×640 and 390×844. A pan gesture on the map never creates a room: a movement and duration threshold separates tap from pan. |
 
 ## 3. Non-functional requirements
 

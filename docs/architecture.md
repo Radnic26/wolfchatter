@@ -168,3 +168,18 @@ Goal: clone, one command, answer a few questions (or press Enter), the app is up
 5. **Non-interactive**: `--yes`, `CI=true` or no TTY answers every question with its default, so CI, the Docker image and `npm run dev` need no wizard. `--help` documents the flags.
 
 The wizard's logic (answer parsing, `.env` rendering, preflight checks) lives in pure functions under `scripts/start/`, tested from `scripts/start/test/` in the same mirrored layout the workspaces use, and is part of the coverage gate; only the entry file that wires stdin/stdout is excluded, like the other process entry points. Root `start-wolfchatter` is a ten-line POSIX script (`chmod +x`, LF endings enforced by `.gitattributes`) so the command in the README is literally `./start-wolfchatter`; `npm start` runs the same file for Windows shells.
+
+## 12. Responsive layout
+
+Wolfpack is cross-platform-first and describes roughly half its work as mobile, the job description asks for accessible UI, and a reviewer is as likely to open the link on a phone as on a laptop. A desktop-only layout would undercut the submission, so the small viewport is the one that gets built first and the wide one is the enhancement.
+
+- **Mobile first, breakpoint 768 px.** The small layout is written first and widened, not the reverse.
+- **Below 768 px the panel is a bottom sheet over the map**, collapsed to a peek carrying the room name and the newest message, expandable to about 70% of the height. The map stays visible behind it, because the map is what the app is about. Above 768 px it is the two-column layout of the reference mockup.
+- **Touch targets are at least 44×44 px**, markers included, which is larger than Leaflet's default icon and therefore an explicit choice rather than a default.
+- **`dvh`, never `vh`**, so the on-screen keyboard does not hide the composer, and inputs are at least 16 px, because iOS zooms the page when a smaller input takes focus.
+- **Safe-area insets** (`env(safe-area-inset-*)`) are honoured, which is what `viewport-fit=cover` in the document head is for.
+- **No horizontal scroll at any width**, verified at 360×640 and 390×844 in a real mobile viewport rather than a narrow desktop window.
+- **Tap versus pan is an acceptance criterion, not a detail.** On a touch screen a pan can arrive as a click and drop an unwanted room, so a movement and duration threshold has to separate the two before a touch counts as "create a room here".
+- Leaflet fills the viewport and the sheet never pushes it into overflow; `invalidateSize()` runs whenever the sheet changes height.
+
+This is the layout a Capacitor or Expo shell would host unchanged, so it is also the concrete half of the mobile path in §9.

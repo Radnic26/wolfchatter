@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { renderDockerMissingNotice, renderReady, renderRunModeQuestion } from "../prompts.ts";
+import {
+  renderDockerMissingNotice,
+  renderReady,
+  renderRunModeQuestion,
+  renderTileSourceQuestion,
+} from "../prompts.ts";
 import { offeredRunModes } from "../run-mode.ts";
+import { offeredTileSources } from "../tile-source.ts";
 
 describe("renderRunModeQuestion", () => {
   it("numbers the options from one, so the answer is the position typed", () => {
@@ -16,6 +22,19 @@ describe("renderRunModeQuestion", () => {
 
     expect(question).toContain("1) Everything here, embedded database");
     expect(question).not.toContain("2)");
+  });
+});
+
+describe("renderTileSourceQuestion", () => {
+  it("numbers the options from one, so the answer is the position typed", () => {
+    const question = renderTileSourceQuestion(offeredTileSources);
+
+    expect(question).toContain("1) Watercolour, via Stadia");
+    expect(question).toContain("2) OpenStreetMap");
+  });
+
+  it("says what each one costs, so the choice needs no documentation", () => {
+    expect(renderTileSourceQuestion(offeredTileSources)).toContain("no key needed on localhost");
   });
 });
 

@@ -5,6 +5,7 @@ import { planStart } from "../plan.ts";
 const answers = (overrides: Partial<Answers> = {}): Answers => ({
   mode: "docker",
   port: 3000,
+  tiles: "watercolor",
   databasePassword: "example-password",
   ...overrides,
 });

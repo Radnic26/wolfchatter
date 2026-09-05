@@ -19,6 +19,15 @@ function queryableOver(session: PostgresSession): Queryable {
 }
 
 export function createPostgresDb(pool: Pool): Db {
+  // An idle pooled connection can die on its own — the server restarts, an operator
+  // terminates the backend, a proxy times it out. The pool reports that as an `error`
+  // event, and an `error` event with no listener is rethrown by Node as an uncaught
+  // exception, which would take the whole process down. The dead client is already gone
+  // by the time this runs, so noting it is the entire job.
+  pool.on("error", (error) => {
+    console.warn(`Lost an idle database connection: ${error.message}`);
+  });
+
   return {
     ...queryableOver(pool),
     async transaction<Result>(run: (tx: Queryable) => Promise<Result>) {

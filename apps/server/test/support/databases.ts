@@ -11,7 +11,8 @@ export interface DatabaseUnderTest {
   open(): Promise<Db>;
 }
 
-const embedded: DatabaseUnderTest = {
+/** Always available, with nothing to install: the driver a fresh clone runs on. */
+export const embeddedDatabase: DatabaseUnderTest = {
   name: "PGlite",
   open: async () => createPgliteDb(new PGlite("memory://")),
 };
@@ -52,8 +53,8 @@ function postgres(serverUrl: string): DatabaseUnderTest {
 
 /** Postgres joins the run only when a server is reachable, so a clone with no Docker still passes. */
 export const databasesUnderTest: DatabaseUnderTest[] = process.env.DATABASE_URL
-  ? [embedded, postgres(process.env.DATABASE_URL)]
-  : [embedded];
+  ? [embeddedDatabase, postgres(process.env.DATABASE_URL)]
+  : [embeddedDatabase];
 
 /** The schema every feature test starts from: a blank database with the migrations applied. */
 export async function openMigratedDatabase(database: DatabaseUnderTest): Promise<Db> {

@@ -1,8 +1,7 @@
-import { PGlite } from "@electric-sql/pglite";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "../src/app.ts";
-import type { Queryable } from "../src/db/db.ts";
-import { createPgliteDb } from "../src/db/pglite.ts";
+import type { Db, Queryable } from "../src/db/db.ts";
+import { embeddedDatabase, openMigratedDatabase } from "./support/databases.ts";
 
 const emptyDatabase: Queryable = {
   query: async () => ({ rows: [] }),
@@ -16,9 +15,29 @@ describe("GET /api/health", () => {
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ status: "ok" });
   });
+});
 
-  it("does not answer an unknown route", async () => {
-    expect((await createApp(emptyDatabase).request("/api/nothing-here")).status).toBe(404);
+describe("a request that matches no route", () => {
+  beforeEach(() => {
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it.each([
+    ["an unknown endpoint", "/api/nothing-here", undefined],
+    ["a method the route does not serve", "/api/rooms", "DELETE"],
+    ["a path outside the api", "/nothing-here", undefined],
+  ])("answers %s with the error shape every client parses", async (_case, path, method) => {
+    const response = await createApp(emptyDatabase).request(path, method ? { method } : undefined);
+
+    expect(response.status).toBe(404);
+    expect(response.headers.get("content-type")).toContain("application/json");
+    await expect(response.json()).resolves.toEqual({
+      error: { code: "not_found", requestId: expect.any(String) },
+    });
   });
 });
 
@@ -63,17 +82,23 @@ describe("an unexpected failure", () => {
     expect(line).toContain(error.requestId);
     expect(line).toContain("connection terminated unexpectedly");
   });
+});
 
-  it("still serves a database that works", async () => {
-    const db = createPgliteDb(new PGlite("memory://"));
-    await db.exec(
-      "CREATE TABLE rooms (id uuid, name text, lat float8, lng float8, created_at timestamptz, number int)",
-    );
+describe("the app over the real schema", () => {
+  let db: Db;
+
+  afterEach(async () => {
+    await db?.close();
+  });
+
+  it("serves an empty map from a freshly migrated database", async () => {
+    // The migrations are the schema, so the app is exercised against them rather than
+    // against a table hand-written to match.
+    db = await openMigratedDatabase(embeddedDatabase);
 
     const response = await createApp(db).request("/api/rooms");
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual([]);
-    await db.close();
   });
 });

@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type { Room } from "@wolfchatter/shared/schema";
 import { createApp } from "../../src/app.ts";
 import type { Db } from "../../src/db/db.ts";
@@ -27,6 +28,6 @@ export async function startApi(database: DatabaseUnderTest): Promise<RunningApi>
     request,
     post,
     createRoom: async () =>
-      (await post("/api/rooms", { lat: 46.7712, lng: 23.6236 })).json() as Promise<Room>,
+      (await post("/api/rooms", { id: randomUUID(), lat: 46.7712, lng: 23.6236 })).json() as Promise<Room>,
   };
 }

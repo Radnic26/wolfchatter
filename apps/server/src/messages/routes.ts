@@ -3,9 +3,9 @@ import { messageHistoryQuerySchema, newMessageSchema, roomIdParamSchema } from "
 import { Hono } from "hono";
 import type { Queryable } from "../db/db.ts";
 import { failWith } from "../lib/api-error.ts";
+import { limitBody } from "../lib/limit-body.ts";
 import { rejectInvalidInput } from "../lib/reject-invalid-input.ts";
 import { roomExists } from "../rooms/queries.ts";
-import { limitBody } from "../rooms/routes.ts";
 import { findMessage, insertMessage, listMessages } from "./queries.ts";
 
 export function createMessageRoutes(db: Queryable) {

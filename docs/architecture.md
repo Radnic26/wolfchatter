@@ -74,20 +74,22 @@ Companion to `PRD.md` (which stays within its two-page budget). This document ho
 ## 3. Data model (PostgreSQL, numbered SQL migrations)
 
 ```
-rooms     id uuid PK (crypto.randomUUID(), server)
+rooms     id uuid PK (client-generated crypto.randomUUID() = idempotency key)
           number bigint GENERATED ALWAYS AS IDENTITY UNIQUE   -- race-free "Chatroom {number}"
           name text GENERATED ALWAYS AS ('Chatroom ' || number) STORED NOT NULL
           lat double precision · lng double precision   -- CHECK on both ranges
           created_at timestamptz NOT NULL DEFAULT now()
 messages  id uuid PK (client-generated crypto.randomUUID() = idempotency key)
+          seq bigint GENERATED ALWAYS AS IDENTITY   -- acceptance order, the only sort key
           room_id uuid NOT NULL REFERENCES rooms(id) ON DELETE CASCADE
           username varchar(32) NOT NULL · body varchar(500) NOT NULL
-          created_at timestamptz NOT NULL DEFAULT now()
-          INDEX (room_id, created_at, id)
+          created_at timestamptz NOT NULL DEFAULT now()   -- displayed, never sorted on
+          INDEX (room_id, seq)
 ```
 
 - The identity column gives sequential names without a count-then-insert race, and the name is a generated column, so no code path composes it and concurrent creation cannot collide. `number` never leaves the server: the API returns `{id, name, lat, lng, createdAt}`, which also keeps the two drivers from disagreeing over how a `bigint` reaches JavaScript.
-- Client-generated message ids make retries idempotent (`INSERT … ON CONFLICT DO NOTHING`); the server owns `created_at`, so ordering is `(created_at, id)`, never the client clock. A conflict returns no row, so the stored message is read back scoped to the room: the first write wins and is answered again, while an id already spent in another room is a collision, answered `409` rather than by handing over that room's message.
+- Client-generated ids make retries idempotent on both tables (`INSERT … ON CONFLICT DO NOTHING`): a lost response answered by a retry returns the room or message that already exists, so one click cannot leave two pins and one send cannot leave two messages.
+- **Ordering is `seq`, not time.** `created_at` is `now()`, the transaction timestamp, and messages posted inside one clock tick share it; breaking that tie on the id would sort the conversation by a random client-generated uuid, and would also hide from `?after=` any message that arrived after the cursor but sorts below it. The identity column orders by the moment the server accepted the row, which is what FR-5 asks for and what makes the backfill exact. `created_at` stays for display only. A conflict returns no row, so the stored message is read back scoped to the room: the first write wins and is answered again, while an id already spent in another room is a collision, answered `409` rather than by handing over that room's message.
 - Coordinates validated to `[-90, 90]` / `[-180, 180]`; strings trimmed and length-checked at the boundary.
 - Migrations live in `apps/server/src/db/migrations/NNNN_name.sql` and are applied at boot, in order, inside a transaction each, tracked in `schema_migrations` with a sha-256 of the file: editing a migration that has already run fails the boot instead of drifting silently. Rows coming out of the database are parsed with the shared Zod schemas, which is where the TypeScript types come from.
 - `Db` is `{ query<Row>(text, params?): Promise<{ rows: Row[] }>; exec(text): Promise<void>; transaction(run): Promise<Result>; close(): Promise<void> }`, implemented by `pg.Pool` and `PGlite`. `exec` is the multi-statement form a migration file needs, and `transaction` exists because a pool hands out a different connection per call, so a `BEGIN` and its `COMMIT` have to be pinned to one client. Feature queries take the narrower `Queryable` (`query` and `exec`), which is what makes them work identically inside or outside a transaction.
@@ -98,12 +100,12 @@ messages  id uuid PK (client-generated crypto.randomUUID() = idempotency key)
 |---|---|
 | `GET /api/health` | liveness for Docker and uptime checks |
 | `GET /api/rooms` | all rooms for the map |
-| `POST /api/rooms {lat, lng}` | create a room → 201 room; broadcasts `room:created` to everyone |
-| `GET /api/rooms/:id/messages?after=<messageId>&limit=200` | history, ascending, cursor by message id (the server resolves the cursor's `created_at`). An unknown room is `404`; a cursor this room never held is `400 invalid_cursor`, because answering with an empty page would tell a client with a broken cursor that it is up to date |
+| `POST /api/rooms {id, lat, lng}` | create a room → `201` with the room; a retry of the same client-generated id → `200` with the room it already made; broadcasts `room:created` to everyone |
+| `GET /api/rooms/:id/messages?after=<messageId>&limit=200` | history, always ascending. With no cursor it is the **newest** page, because a busy room holds more than one page and a reader needs the last messages, not the first ones ever written; with `after` it is the gap from that message onwards, so a reconnecting client catches up in order. An unknown room is `404`; a cursor this room never held is `400 invalid_cursor`, because answering with an empty page would tell a client with a broken cursor that it is up to date |
 | `POST /api/rooms/:id/messages {id, username, body}` | post → `201` with the canonical message; a retry of the same id → `200` with the message already stored; the same id in another room → `409 message_id_taken`; broadcasts `message:created` to room subscribers |
 | `GET /ws` | WebSocket upgrade |
 
-Validation uses `zValidator` with the shared Zod schemas, so the typed client `hc<AppType>` infers request and response types. Bodies, path parameters and query strings all go through it, and the validator's own 400 is replaced so the schema is never echoed back to the caller. Responses need no separate schema: every row is parsed by the shared schema on its way out of the database, so a body that reaches `c.json()` has already been validated. Error bodies are `{ error: { code, requestId } }` and nothing else, with the reason logged against that id.
+Validation uses `zValidator` with the shared Zod schemas, so the typed client `hc<AppType>` infers request and response types. Bodies, path parameters and query strings all go through it, and the validator's own 400 is replaced so the schema is never echoed back to the caller. Responses need no separate schema: every row is parsed by the shared schema on its way out of the database, so a body that reaches `c.json()` has already been validated. Error bodies are `{ error: { code, requestId } }` and nothing else, with the reason logged against that id. An unmatched `/api/*` path answers in that same shape rather than falling through to the static handler that serves the single-page shell for every other deep link.
 
 ## 5. Real-time delivery
 

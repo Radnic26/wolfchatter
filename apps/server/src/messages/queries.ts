@@ -73,27 +73,31 @@ export async function findMessage(
 }
 
 /**
- * Ascending by server time with the id breaking ties, which is the order the index holds
- * and the order a cursor walks: `after` returns exactly the messages a client missed.
+ * Two different reads. Reconnecting with a cursor asks for the gap, oldest first, so the
+ * client catches up in order. Opening a room cold asks for the newest page instead: a busy
+ * room has more history than one page holds, and the messages a reader needs are the last
+ * ones, not the first ones ever written.
  */
 export async function listMessages(
   db: Queryable,
   roomId: string,
   page: MessageHistoryQuery,
 ): Promise<Message[]> {
-  const { rows } = page.after
-    ? await db.query<MessageRow>(
-        `SELECT ${messageColumns} FROM messages
-         WHERE room_id = $1
-           AND (created_at, id) > (SELECT created_at, id FROM messages WHERE id = $2 AND room_id = $1)
-         ORDER BY created_at, id
-         LIMIT $3`,
-        [roomId, page.after, page.limit],
-      )
-    : await db.query<MessageRow>(
-        `SELECT ${messageColumns} FROM messages WHERE room_id = $1 ORDER BY created_at, id LIMIT $2`,
-        [roomId, page.limit],
-      );
+  if (page.after !== undefined) {
+    const { rows } = await db.query<MessageRow>(
+      `SELECT ${messageColumns} FROM messages
+       WHERE room_id = $1
+         AND seq > (SELECT seq FROM messages WHERE id = $2 AND room_id = $1)
+       ORDER BY seq
+       LIMIT $3`,
+      [roomId, page.after, page.limit],
+    );
+    return rows.map(toMessage);
+  }
 
-  return rows.map(toMessage);
+  const { rows } = await db.query<MessageRow>(
+    `SELECT ${messageColumns} FROM messages WHERE room_id = $1 ORDER BY seq DESC LIMIT $2`,
+    [roomId, page.limit],
+  );
+  return rows.map(toMessage).reverse();
 }

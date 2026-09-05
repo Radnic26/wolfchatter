@@ -1,3 +1,4 @@
+import { EventEmitter } from "node:events";
 import type { Pool } from "pg";
 import { describe, expect, it, vi } from "vitest";
 import { createPostgresDb } from "../../src/db/postgres.ts";
@@ -10,11 +11,11 @@ function fakePool(clientQuery = vi.fn().mockResolvedValue({ rows: [] })) {
   const release = vi.fn();
   const poolQuery = vi.fn().mockResolvedValue({ rows: [{ answer: 42 }] });
   const end = vi.fn().mockResolvedValue(undefined);
-  const pool = {
+  const pool = Object.assign(new EventEmitter(), {
     query: poolQuery,
     connect: vi.fn().mockResolvedValue({ query: clientQuery, release }),
     end,
-  };
+  });
   return { pool: pool as unknown as Pool, poolQuery, clientQuery, release, end };
 }
 
@@ -65,6 +66,23 @@ describe("createPostgresDb", () => {
 
     expect(clientQuery.mock.calls.map(([text]) => text)).toEqual(["BEGIN", "ROLLBACK"]);
     expect(release).toHaveBeenCalledOnce();
+  });
+
+  it("survives an idle connection dying instead of taking the process down", async () => {
+    const warned = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const { pool } = fakePool();
+    createPostgresDb(pool);
+
+    // This is what pg-pool does when a pooled connection dies while it sits idle. With no
+    // listener Node rethrows it as an uncaught exception and the server stops serving.
+    const emit = () =>
+      pool.emit("error", new Error("terminating connection due to administrator command"), {} as never);
+
+    expect(emit).not.toThrow();
+    expect(warned).toHaveBeenCalledWith(
+      expect.stringContaining("terminating connection due to administrator command"),
+    );
+    warned.mockRestore();
   });
 
   it("closes the pool", async () => {

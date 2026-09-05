@@ -3,8 +3,13 @@ import * as z from "zod";
 export const latitudeSchema = z.number().min(-90).max(90);
 export const longitudeSchema = z.number().min(-180).max(180);
 
-/** What a client sends to open a chatroom: the point it clicked, and nothing else. */
+/**
+ * What a client sends to open a chatroom: the point it clicked, under an id it generates
+ * and repeats if it has to retry. A lost response is then answered with the room that
+ * already exists, so one gesture can never leave two pins on the map.
+ */
 export const newRoomSchema = z.strictObject({
+  id: z.uuid(),
   lat: latitudeSchema,
   lng: longitudeSchema,
 });

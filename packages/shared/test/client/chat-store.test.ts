@@ -284,3 +284,20 @@ describe("createChatStore username", () => {
     expect(store.getSnapshot().username).toBe("ana");
   });
 });
+
+describe("createChatStore connection", () => {
+  it("starts out connecting, because nothing has been reached yet", () => {
+    expect(createChatStore().getSnapshot().connection).toBe("connecting");
+  });
+
+  it("tells whoever is watching that the connection changed", () => {
+    const store = createChatStore();
+    const listener = vi.fn();
+    store.subscribe(listener);
+
+    store.setConnection("live");
+
+    expect(store.getSnapshot().connection).toBe("live");
+    expect(listener).toHaveBeenCalledOnce();
+  });
+});

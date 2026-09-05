@@ -17,10 +17,18 @@ export type UsernameStorage = {
   write: (username: string) => void;
 };
 
+/**
+ * What the socket is doing, in the three states worth telling someone about. "Connecting"
+ * and "reconnecting" are not the same sentence: the first has never had a connection, the
+ * second has lost one and is asking for it back.
+ */
+export type ConnectionStatus = "connecting" | "live" | "reconnecting";
+
 export type ChatSnapshot = {
   rooms: readonly MapRoom[];
   messagesByRoom: ReadonlyMap<string, readonly Message[]>;
   username: string;
+  connection: ConnectionStatus;
 };
 
 /**
@@ -38,6 +46,7 @@ export type ChatStore = {
   setMessages: (roomId: string, messages: readonly Message[]) => void;
   addMessage: (message: Message) => void;
   setUsername: (username: string) => void;
+  setConnection: (connection: ConnectionStatus) => void;
 };
 
 function stored(room: Room): MapRoom {
@@ -66,6 +75,7 @@ export function createChatStore(storage: UsernameStorage = forgetful()): ChatSto
     rooms: [],
     messagesByRoom: new Map(),
     username: remembered(storage),
+    connection: "connecting",
   };
 
   function publish(change: Partial<ChatSnapshot>): void {
@@ -129,6 +139,10 @@ export function createChatStore(storage: UsernameStorage = forgetful()): ChatSto
     setUsername(username) {
       storage.write(username);
       publish({ username });
+    },
+
+    setConnection(connection) {
+      publish({ connection });
     },
   };
 }

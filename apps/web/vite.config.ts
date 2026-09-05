@@ -9,6 +9,16 @@ export default defineConfig({
   // The wizard writes one `.env` at the root of the repository, and Vite would otherwise
   // look for it beside this file and silently find nothing.
   envDir: "../../",
+  build: {
+    rollupOptions: {
+      output: {
+        // Leaflet changes with its version and the app changes every day, so they are
+        // cached apart. Not lazily loaded: `MapContainer` must never sit inside Suspense,
+        // and the map is the first thing on the screen in any case.
+        manualChunks: (id: string) => (/node_modules\/(react-)?leaflet\//.test(id) ? "leaflet" : undefined),
+      },
+    },
+  },
   server: {
     // Proxying keeps the browser on one origin in development, so there is no CORS to configure.
     proxy: {

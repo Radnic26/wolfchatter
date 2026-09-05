@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { PGlite } from "@electric-sql/pglite";
 import pg from "pg";
 import type { Db } from "../../src/db/db.ts";
+import { applyMigrations, migrationsDirectory } from "../../src/db/migrate.ts";
 import { createPgliteDb } from "../../src/db/pglite.ts";
 import { createPostgresDb } from "../../src/db/postgres.ts";
 
@@ -53,3 +54,10 @@ function postgres(serverUrl: string): DatabaseUnderTest {
 export const databasesUnderTest: DatabaseUnderTest[] = process.env.DATABASE_URL
   ? [embedded, postgres(process.env.DATABASE_URL)]
   : [embedded];
+
+/** The schema every feature test starts from: a blank database with the migrations applied. */
+export async function openMigratedDatabase(database: DatabaseUnderTest): Promise<Db> {
+  const db = await database.open();
+  await applyMigrations(db, migrationsDirectory);
+  return db;
+}

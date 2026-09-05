@@ -4,8 +4,8 @@
 # PostToolUse cannot block, but exit 2 puts stderr in front of Claude.
 set -eu
 
-[ -f package.json ] || exit 0
 command -v jq >/dev/null 2>&1 || exit 0
+jq -e '.scripts.typecheck' package.json >/dev/null 2>&1 || exit 0
 
 edited_file=$(cat | jq -r '.tool_input.file_path // empty')
 [ -n "$edited_file" ] || exit 0
@@ -24,13 +24,15 @@ packages/shared/*) workspace=packages/shared ;;
 *) exit 0 ;;
 esac
 
-if ! biome_output=$(npx --no-install biome check --write "$edited_file" 2>&1); then
+# --no-errors-on-unmatched: a file Biome does not own is not a failure.
+if ! biome_output=$(npx --no-install biome check --write --no-errors-on-unmatched "$edited_file" 2>&1); then
 	printf '%s\n' "$biome_output" >&2
 	exit 2
 fi
 
-if ! typecheck_output=$(npm run --silent typecheck --workspace "$workspace" 2>&1); then
-	printf '%s\n' "$typecheck_output" >&2
+# --if-present: during the scaffold a workspace can legitimately exist before its scripts do.
+if ! typecheck_output=$(npm run typecheck --workspace "$workspace" --if-present 2>&1); then
+	printf '%s\n' "${typecheck_output:-"npm run typecheck --workspace $workspace failed without output"}" >&2
 	exit 2
 fi
 

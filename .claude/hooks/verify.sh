@@ -4,8 +4,8 @@
 # stop_hook_active flag, and an attempt counter on disk in case the flag is absent.
 set -eu
 
-[ -f package.json ] || exit 0
 command -v jq >/dev/null 2>&1 || exit 0
+jq -e '.scripts.check' package.json >/dev/null 2>&1 || exit 0
 
 input=$(cat)
 [ "$(printf '%s' "$input" | jq -r '.stop_hook_active // false')" = "true" ] && exit 0

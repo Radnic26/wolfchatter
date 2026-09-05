@@ -1,0 +1,10 @@
+{
+  "name": "@wolfchatter/shared",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Schemas, protocol and client state shared by the server, the web app and any future native shell",
+  "dependencies": {
+    "zod": "4.5.4"
+  }
+}

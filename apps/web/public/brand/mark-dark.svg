@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" fill="none" role="img" aria-label="Wolfchatter">
+  <path d="M9 15 21.5 44 32 24 42.5 44 55 15" stroke="#F3EFF2" stroke-width="3.5" stroke-linejoin="miter"/>
+  <circle cx="21.5" cy="46" r="4.5" fill="#FF4D86"/>
+  <circle cx="42.5" cy="46" r="4.5" fill="#FF4D86"/>
+</svg>

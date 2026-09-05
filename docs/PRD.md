@@ -66,11 +66,11 @@ Wolfchatter is a real-time chat on a map. A user clicks anywhere on a Leaflet ma
 
 **First run.** `./start-wolfchatter` (also `npm start`) is a dependency-free wizard on `node:readline`: it checks the Node version, asks a few questions with defaults (database: embedded PGlite, Docker Postgres or an own URL; port; tile style; optional Stadia key for a deployed domain), writes `.env` locally (mode 0600, git-ignored; only `.env.example` is committed and nothing in it is secret), installs, starts and prints the URL. Enter accepts each default; `--yes` or no TTY skips the questions, which is what CI and `npm run dev` rely on. Anything typed as a secret is masked and never logged.
 
-**Mobile readiness.** `packages/shared` (schemas, protocol, store, client) has no DOM dependency; the origin allowlist and storage adapter already accommodate a native shell. Path: PWA manifest (hours, hand-written, if time allows) → Capacitor wrapper (days) → Expo app reusing the shared package (weeks).
+**Mobile readiness.** `packages/shared` (schemas, protocol, store, client) has no DOM dependency; the origin allowlist and storage adapter already accommodate a native shell. Future work, none of it part of this deliverable: PWA manifest (hours, hand-written) → Capacitor wrapper (days) → Expo app reusing the shared package (weeks).
 
 ## 6. Delivery and verification
 
-Twelve small pull requests in this order: PRD → AI configuration → scaffold → shared schema and server → map and pins → messages → real-time → accessibility and PWA → infra estimate → audit (security, load, performance) and fixes → self-review and fixes → README and final report (`delivery-plan.md`).
+Twelve small pull requests in this order: PRD → AI configuration → scaffold → shared schema and server → map and pins → messages → real-time → accessibility → infra estimate → audit (security, load, performance) and fixes → self-review and fixes → README and final report (`delivery-plan.md`).
 
 **End-to-end check before submission:** fresh clone → `./start-wolfchatter` with Enter on every prompt (then, separately, `npm run dev` and `docker compose up --build`) → two browsers → click the map → pin and "Chatroom 1" panel in both → post from each → messages appear live in both → reload → everything persists → click the other marker → panel switches → `npm run check` green.
 

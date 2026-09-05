@@ -49,8 +49,8 @@ Companion to `PRD.md` (which stays within its two-page budget). This document ho
 | Socket.IO | custom protocol on top of WebSocket, polling-first handshake; hides exactly the mechanics (heartbeat, reconnect, backfill) this app is meant to show |
 | NestJS, Fastify, Express | decorators need a build step under native type-stripping (Nest); no typed client (Fastify); no types and no signal (Express) |
 | React Router, Zustand | one screen and a URL parameter; the shared store already holds the client state |
-| Playwright | one end-to-end spec is a stretch goal; browsers and a large package are not in the baseline |
-| vite-plugin-pwa | a hand-written `manifest.webmanifest` is enough for "installable" if time allows |
+| Playwright | out of scope for this deliverable rather than deprioritised: browsers and a large package are not in the baseline, and the flows it would cover are checked by the component suite and by scripted passes over the running app |
+| vite-plugin-pwa | out of scope for this deliverable. A hand-written `manifest.webmanifest` would give the icon, the name and the standalone display mode, but Chrome's install prompt on Android and a real WebAPK also require a service worker with a `fetch` handler — which this app has no use for, since rooms and messages are read from the API on every load and the tiles must not be cached at all |
 | knip, editorconfig-checker | marginal for a repository this size |
 | Bun, Elysia, Eden Treaty | not on Wolfpack's stack; the job description says Node; Elysia's Node adapter has open WebSocket issues |
 
@@ -153,7 +153,7 @@ docs/            PRD, architecture, delivery plan, infra & cost, self-review, wo
 
 ## 9. Mobile readiness
 
-`packages/shared` is DOM-free by construction, the storage adapter and WS origin allowlist already accommodate native shells, and a single React 19.2 is hoisted at the workspace root (React Native 0.86 pins the same React line). Roadmap: hand-written PWA manifest (hours; included if time allows) → Capacitor 8 wrapper of the web build (days) → Expo SDK 57 app importing `@wolfchatter/shared` unchanged, with `react-native-maps` `UrlTile` on the same watercolor tiles (weeks). Wolfpack describes itself as cross-platform-first (React Native, Flutter, KMP), so the shared-package boundary is the piece that makes this credible.
+`packages/shared` is DOM-free by construction, the storage adapter and WS origin allowlist already accommodate native shells, and a single React 19.2 is hoisted at the workspace root (React Native 0.86 pins the same React line). Roadmap, all of it future work rather than part of this deliverable: hand-written PWA manifest (hours) → Capacitor 8 wrapper of the web build (days) → Expo SDK 57 app importing `@wolfchatter/shared` unchanged, with `react-native-maps` `UrlTile` on the same watercolor tiles (weeks). Wolfpack describes itself as cross-platform-first (React Native, Flutter, KMP), so the shared-package boundary is the piece that makes this credible.
 
 ## 10. Map tiles
 

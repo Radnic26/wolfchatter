@@ -1,5 +1,5 @@
 import type { ChatStore } from "@wolfchatter/shared/client";
-import { randomUuid } from "./random-uuid.ts";
+import { randomUuid } from "../lib/random-uuid.ts";
 import { createRoom, fetchRooms } from "./room-requests.ts";
 
 export async function loadRooms(store: ChatStore): Promise<void> {

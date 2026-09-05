@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { randomUuid } from "../../src/rooms/random-uuid.ts";
+import { randomUuid } from "../../src/lib/random-uuid.ts";
 
 const version4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 

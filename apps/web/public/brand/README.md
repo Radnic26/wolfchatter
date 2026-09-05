@@ -1,8 +1,7 @@
 # Brand marks
 
-Five original marks drawn for Wolfchatter, each in a light and a dark version. They share one
-visual grammar: a geometric line-art monogram on a 64 grid, 3.5 stroke, mitred joins, one hot
-accent. They are original drawings, not edits of anyone else's logo.
+Five original marks drawn for Wolfchatter, each in a light and a dark version. They are
+original drawings, not edits of anyone else's logo.
 
 | File | Mark | Where it is used |
 |---|---|---|
@@ -12,9 +11,5 @@ accent. They are original drawings, not edits of anyone else's logo.
 | `state-live-light.svg` / `-dark.svg` | Broadcast | Live-connection indicator |
 | `state-room-light.svg` / `-dark.svg` | Bubble Pin | Empty state inside a room with no messages |
 
-Accent `#EC2A6E` on light grounds, `#FF4D86` on dark. Ink `#141216` and `#F3EFF2`.
-Minimum size 16 px; below that the strokes close up. Clear space on all sides is one quarter of
-the mark's width.
-
-`../favicon.svg` carries a `prefers-color-scheme` block inside the SVG, so the tab icon follows
-the browser's theme without a second file.
+The palette, the type scale, the clear space and the minimum size live in
+[docs/brand.md](../../../../docs/brand.md), which is the single source for all of it.

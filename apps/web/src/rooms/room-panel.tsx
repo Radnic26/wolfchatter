@@ -88,7 +88,7 @@ export function RoomPanel({ store, room, failedToOpen, openExpanded }: RoomPanel
       className={`absolute inset-x-0 bottom-0 z-[1000] flex flex-col overflow-hidden rounded-t-2xl
         border-rule border-t bg-ground pb-[env(safe-area-inset-bottom)] transition-[height]
         motion-reduce:transition-none md:static md:h-auto md:w-80 md:rounded-none md:border-t-0
-        md:border-l md:pb-0 ${expanded ? "h-[70dvh]" : "h-peek"}`}
+        md:border-l md:pb-0 ${expanded ? "h-sheet" : "h-peek"}`}
     >
       <div className="flex h-peek shrink-0 items-center gap-2 px-4 md:h-auto md:py-4">
         <div className="min-w-0 flex-1">

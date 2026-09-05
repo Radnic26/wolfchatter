@@ -31,8 +31,9 @@
   --font-display: "Archivo", ui-sans-serif, system-ui, sans-serif;
   --font-script: "Kaushan Script", ui-serif, cursive;
 
-  /* The height of the collapsed sheet. Named because the map's tile credit has to clear it. */
+  /* The two heights of the sheet. Named because the map's tile credit has to clear both. */
   --spacing-peek: 4.5rem;
+  --spacing-sheet: 70dvh;
 }
 
 :root {
@@ -40,9 +41,14 @@
 }
 
 /* Crediting the tiles is a licence term, not decoration, so the sheet lying over the map
-   below 768 px is not allowed to sit on top of it. */
+   below 768 px is not allowed to sit on top of it — at either of the heights it takes.
+   The panel reports its own state, which is what lets the credit follow it up. */
 @media (width < 48rem) {
   .leaflet-bottom.leaflet-right {
     bottom: var(--spacing-peek);
+  }
+
+  body:has([data-expanded="true"]) .leaflet-bottom.leaflet-right {
+    bottom: var(--spacing-sheet);
   }
 }

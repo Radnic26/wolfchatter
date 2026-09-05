@@ -42,12 +42,19 @@ function FollowSelectedRoom({ room }: { room: MapRoom | undefined }) {
 }
 
 export function ChatMap({ rooms, selectedRoomId, onSelectRoom, onTapMap }: ChatMapProps) {
+  // Leaflet animates its own zoom and its own fade, and it is asked at construction, so
+  // this is where the preference reaches the zoom buttons a keyboard walks onto.
+  const animates = !prefersReducedMotion();
+
   return (
     <MapContainer
       center={initialCenter}
       zoom={initialZoom}
       className="h-full w-full"
-      // Leaflet reads the two above once, at mount, so the view is moved with `flyTo`.
+      zoomAnimation={animates}
+      fadeAnimation={animates}
+      markerZoomAnimation={animates}
+      // Leaflet reads the centre and the zoom once, at mount, so the view is moved with `flyTo`.
     >
       <TileLayer url={tiles.url} attribution={tiles.attribution} maxZoom={tiles.maxZoom} />
       <MapTaps onTap={onTapMap} />

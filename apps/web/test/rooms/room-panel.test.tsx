@@ -1,9 +1,9 @@
 import { randomUUID } from "node:crypto";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { type ChatStore, createChatStore, type MapRoom } from "@wolfchatter/shared/client";
 import type { Message } from "@wolfchatter/shared/schema";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { RoomPanel } from "../../src/rooms/room-panel.tsx";
 import { type ChatClientDouble, fakeChatClient } from "../support/chat-client.ts";
 
@@ -28,6 +28,7 @@ const message = (body: string, username = "ana"): Message => ({
 
 let store: ChatStore;
 let client: ChatClientDouble;
+let closed: () => void;
 
 /** Following a room is what loads it, so this is the history the socket client answers with. */
 function serveMessages(history: readonly Message[]): void {
@@ -36,13 +37,25 @@ function serveMessages(history: readonly Message[]): void {
 
 function showPanel(room: MapRoom | undefined, openExpanded = false) {
   render(
-    <RoomPanel store={store} client={client} room={room} failedToOpen={false} openExpanded={openExpanded} />,
+    <RoomPanel
+      store={store}
+      client={client}
+      room={room}
+      failedToOpen={false}
+      openExpanded={openExpanded}
+      onClose={closed}
+    />,
   );
 }
 
 beforeEach(() => {
   store = createChatStore();
   client = fakeChatClient();
+  closed = vi.fn();
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
 });
 
 describe("RoomPanel", () => {
@@ -67,7 +80,14 @@ describe("RoomPanel", () => {
 
   it("announces a creation that failed, in place of the room that never opened", () => {
     render(
-      <RoomPanel store={store} client={client} room={undefined} failedToOpen={true} openExpanded={false} />,
+      <RoomPanel
+        store={store}
+        client={client}
+        room={undefined}
+        failedToOpen={true}
+        openExpanded={false}
+        onClose={closed}
+      />,
     );
 
     expect(screen.getByRole("alert")).toHaveTextContent("could not be opened");
@@ -144,7 +164,14 @@ describe("RoomPanel", () => {
 
   it("stops following a room the panel has moved off", async () => {
     const { unmount } = render(
-      <RoomPanel store={store} client={client} room={stored} failedToOpen={false} openExpanded={false} />,
+      <RoomPanel
+        store={store}
+        client={client}
+        room={stored}
+        failedToOpen={false}
+        openExpanded={false}
+        onClose={closed}
+      />,
     );
     await waitFor(() => expect(client.subscribed).toEqual([stored.id]));
 
@@ -169,5 +196,75 @@ describe("RoomPanel", () => {
     showPanel(stored);
 
     expect(await screen.findByRole("alert")).toHaveTextContent("earlier messages could not be loaded");
+  });
+  it("puts the keyboard on the title of the room that just opened", () => {
+    showPanel(stored);
+
+    expect(screen.getByRole("heading", { name: "Chatroom 7" })).toHaveFocus();
+  });
+
+  it("announces a room whose name has not arrived, rather than an empty title", () => {
+    showPanel(pending);
+
+    expect(screen.getByRole("heading", { name: "Opening the chatroom" })).toHaveFocus();
+  });
+
+  it("leaves the keyboard where it is when a message arrives, so nobody is interrupted mid-word", async () => {
+    const user = userEvent.setup();
+    showPanel(stored);
+    const writing = screen.getByPlaceholderText("write message here");
+    await user.click(writing);
+
+    act(() => store.addMessage(message("someone else wrote this")));
+
+    // Once in the list and once in the collapsed sheet's preview.
+    expect(await screen.findAllByText("someone else wrote this")).toHaveLength(2);
+    expect(writing).toHaveFocus();
+  });
+
+  it("closes the room on Escape, which is the only way out without a mouse", async () => {
+    const user = userEvent.setup();
+    showPanel(stored);
+
+    await user.keyboard("{Escape}");
+
+    expect(closed).toHaveBeenCalled();
+  });
+
+  it("puts the sheet down before it closes the room, where there is a sheet to put down", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal("matchMedia", () => ({ matches: true }));
+    showPanel(stored, true);
+
+    await user.keyboard("{Escape}");
+
+    expect(screen.getByRole("button", { name: "Expand the chatroom" })).toBeInTheDocument();
+    expect(closed).not.toHaveBeenCalled();
+    // What the sheet just hid may have been holding the keyboard, and a browser drops the
+    // focus of anything it hides, so the second Escape would land on nothing.
+    expect(screen.getByRole("region", { name: "Chatroom" })).toHaveFocus();
+
+    await user.keyboard("{Escape}");
+
+    expect(closed).toHaveBeenCalled();
+  });
+
+  it("closes the room on the first Escape where there is no sheet to put down", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal("matchMedia", () => ({ matches: false }));
+    showPanel(stored, true);
+
+    await user.keyboard("{Escape}");
+
+    expect(closed).toHaveBeenCalled();
+  });
+
+  it("ignores the keys that are not Escape", async () => {
+    const user = userEvent.setup();
+    showPanel(stored);
+
+    await user.keyboard("{Enter}");
+
+    expect(closed).not.toHaveBeenCalled();
   });
 });

@@ -27,7 +27,7 @@ Wolfchatter is a real-time chat on a map. A user clicks anywhere on a Leaflet ma
 | FR-6 | Persistence between sessions | Rooms and messages are stored server-side; after a reload or from another browser every room and its history is intact. |
 | FR-7 | Real-time delivery ("Feeling Lucky") | A posted message appears in every client viewing that room within ~1 s; a new room appears on every map. After a dropped connection the client reconnects and back-fills what it missed. |
 | FR-8 | Robustness | Bad input (invalid JSON, oversized payloads, unknown room, malformed coordinates) gets a 4xx with a safe body, never a crash or stack trace. A double-click does not create two rooms for one gesture; a retried message with the same id is stored once. |
-| FR-9 | Accessibility baseline | Keyboard: markers and room list reachable, Enter sends, Escape closes the panel. Screen readers: labelled `role="log"` live region, labelled inputs, announced errors. Reduced motion respected. |
+| FR-9 | Accessibility baseline | Keyboard, end to end: a skip link past the pins, every marker focusable and opened with Enter or Space, focus moved to the panel heading when the room on show changes and left where it is when a message arrives, Enter sends, Escape puts the sheet down and then closes the room and hands the keyboard back to the map. Nothing the collapsed sheet hides is focusable. Screen readers: labelled `role="log"` live region, labelled inputs, errors and connection state announced. Reduced motion respected, the map's own zoom, fade and pan included. |
 | FR-10 | Responsive and mobile friendly | Mobile-first layout, breakpoint 768 px. Below it the room panel is a bottom sheet over the map — collapsed to a peek with the room name and newest message, expandable to ~70% height — so the map stays visible; above it, the two-column reference layout. Touch targets ≥ 44×44 px, markers included. `dvh` never `vh`, inputs ≥ 16 px, safe-area insets honoured. No horizontal scroll at any width, verified at 360×640 and 390×844. A pan gesture on the map never creates a room: a movement and duration threshold separates tap from pan. |
 
 ## 3. Non-functional requirements
@@ -66,11 +66,11 @@ Wolfchatter is a real-time chat on a map. A user clicks anywhere on a Leaflet ma
 
 **First run.** `./start-wolfchatter` (also `npm start`) is a dependency-free wizard on `node:readline`: it checks the Node version, asks a few questions with defaults (database: embedded PGlite, Docker Postgres or an own URL; port; tile style; optional Stadia key for a deployed domain), writes `.env` locally (mode 0600, git-ignored; only `.env.example` is committed and nothing in it is secret), installs, starts and prints the URL. Enter accepts each default; `--yes` or no TTY skips the questions, which is what CI and `npm run dev` rely on. Anything typed as a secret is masked and never logged.
 
-**Mobile readiness.** `packages/shared` (schemas, protocol, store, client) has no DOM dependency; the origin allowlist and storage adapter already accommodate a native shell. Path: PWA manifest (hours, hand-written, if time allows) → Capacitor wrapper (days) → Expo app reusing the shared package (weeks).
+**Mobile readiness.** `packages/shared` (schemas, protocol, store, client) has no DOM dependency; the origin allowlist and storage adapter already accommodate a native shell. Future work, none of it part of this deliverable: PWA manifest (hours, hand-written) → Capacitor wrapper (days) → Expo app reusing the shared package (weeks).
 
 ## 6. Delivery and verification
 
-Twelve small pull requests in this order: PRD → AI configuration → scaffold → shared schema and server → map and pins → messages → real-time → accessibility and PWA → infra estimate → audit (security, load, performance) and fixes → self-review and fixes → README and final report (`delivery-plan.md`).
+Twelve small pull requests in this order: PRD → AI configuration → scaffold → shared schema and server → map and pins → messages → real-time → accessibility → infra estimate → audit (security, load, performance) and fixes → self-review and fixes → README and final report (`delivery-plan.md`).
 
 **End-to-end check before submission:** fresh clone → `./start-wolfchatter` with Enter on every prompt (then, separately, `npm run dev` and `docker compose up --build`) → two browsers → click the map → pin and "Chatroom 1" panel in both → post from each → messages appear live in both → reload → everything persists → click the other marker → panel switches → `npm run check` green.
 

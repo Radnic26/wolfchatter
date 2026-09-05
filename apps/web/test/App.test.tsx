@@ -151,6 +151,34 @@ describe("App", () => {
     expect(await screen.findByRole("heading", { name: "Chatroom 2" })).toBeInTheDocument();
   });
 
+  it("offers a way past the pins, which a keyboard would otherwise walk one by one", async () => {
+    serve([room({ name: "Chatroom 1" })]);
+
+    renderApp();
+    await screen.findByRole("button", { name: "Chatroom 1" });
+
+    expect(screen.getByRole("link", { name: "Skip to the chatroom" })).toHaveAttribute("href", "#chatroom");
+    // A section is not focusable on its own, so the jump would land on nothing without this.
+    const panel = screen.getByRole("region", { name: "Chatroom" });
+    expect(panel).toHaveAttribute("id", "chatroom");
+    expect(panel).toHaveAttribute("tabindex", "-1");
+  });
+
+  it("lets go of the room on Escape, and the address lets go with it", async () => {
+    const user = userEvent.setup();
+    const deepLinked = room({ name: "Chatroom 2" });
+    serve([deepLinked]);
+    window.history.replaceState(null, "", `/?room=${deepLinked.id}`);
+
+    renderApp();
+    await screen.findByRole("heading", { name: "Chatroom 2" });
+
+    await user.keyboard("{Escape}");
+
+    expect(window.location.search).toBe("");
+    expect(screen.getByText("Click on the map to start a chat")).toBeInTheDocument();
+  });
+
   it("switches the panel to the room whose marker was clicked", async () => {
     const user = userEvent.setup();
     serve([room({ name: "Chatroom 1" }), room({ name: "Chatroom 2", lat: 38.7, lng: -9.1 })]);

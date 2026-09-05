@@ -1,18 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { type ChatStore, createChatStore } from "@wolfchatter/shared/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { composeMessage, loadMessages, sendMessage } from "../../src/messages/message-actions.ts";
+import { composeMessage, sendMessage } from "../../src/messages/message-actions.ts";
 
 const roomId = randomUUID();
-
-const storedMessage = (overrides: Partial<{ id: string; body: string }> = {}) => ({
-  id: randomUUID(),
-  roomId,
-  username: "ana",
-  body: "hello",
-  createdAt: "2026-09-05T10:00:00.000Z",
-  ...overrides,
-});
 
 function answerWith(body: unknown, init: ResponseInit = {}): void {
   vi.stubGlobal(
@@ -29,25 +20,6 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
-});
-
-describe("loadMessages", () => {
-  it("puts the room's history in the store as the server ordered it", async () => {
-    const first = storedMessage({ body: "first" });
-    const second = storedMessage({ body: "second" });
-    answerWith([first, second]);
-
-    await loadMessages(store, roomId);
-
-    expect(store.getSnapshot().messagesByRoom.get(roomId)).toEqual([first, second]);
-  });
-
-  it("lets a failure through instead of leaving the room looking empty", async () => {
-    answerWith({ error: { code: "room_not_found", requestId: "abc" } }, { status: 404 });
-
-    await expect(loadMessages(store, roomId)).rejects.toThrow(/404/);
-    expect(store.getSnapshot().messagesByRoom.get(roomId)).toBeUndefined();
-  });
 });
 
 describe("composeMessage", () => {

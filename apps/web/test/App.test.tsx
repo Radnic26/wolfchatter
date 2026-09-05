@@ -6,6 +6,7 @@ import { StrictMode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "../src/App.tsx";
 import { leafletTestbed } from "./support/react-leaflet.tsx";
+import { type StubbedSockets, stubWebSocket } from "./support/socket.ts";
 
 vi.mock("react-leaflet", async () => (await import("./support/react-leaflet.tsx")).mockReactLeaflet());
 
@@ -80,10 +81,13 @@ function renderApp() {
   );
 }
 
+let sockets: StubbedSockets;
+
 beforeEach(() => {
   leafletTestbed.reset();
   window.history.replaceState(null, "", "/");
   localStorage.clear();
+  sockets = stubWebSocket();
 });
 
 afterEach(() => {
@@ -218,6 +222,66 @@ describe("App", () => {
 
     // In the list, and again in the peek the collapsed sheet shows.
     expect(await screen.findAllByText("written in another browser")).toHaveLength(2);
+  });
+
+  it("puts a room somebody else opened on the map, with no reload", async () => {
+    serve([]);
+    renderApp();
+    await screen.findByText("Click on the map to start a chat");
+
+    const elsewhere = room({ name: "Chatroom 4", lat: 38.7, lng: -9.1 });
+    await act(async () => {
+      sockets.deliver({ type: "room:created", room: elsewhere });
+    });
+
+    expect(screen.getByRole("button", { name: "Chatroom 4" })).toBeInTheDocument();
+  });
+
+  it("shows a message posted in another browser without being asked for it", async () => {
+    const user = userEvent.setup();
+    const stored = room({ name: "Chatroom 1" });
+    serve([stored]);
+    renderApp();
+    await user.click(await screen.findByRole("button", { name: "Chatroom 1" }));
+    await waitFor(() => expect(sockets.sent).toContainEqual({ type: "subscribe", roomId: stored.id }));
+
+    await act(async () => {
+      sockets.deliver({
+        type: "message:created",
+        message: {
+          id: randomUUID(),
+          roomId: stored.id,
+          username: "bogdan",
+          body: "said from the other browser",
+          createdAt: "2026-09-05T10:00:00.000Z",
+        },
+      });
+    });
+
+    // In the list, and again in the peek the collapsed sheet shows.
+    expect(screen.getAllByText("said from the other browser")).toHaveLength(2);
+  });
+
+  it("leaves no socket open behind a view that is gone", async () => {
+    serve([]);
+    const { unmount } = render(
+      <StrictMode>
+        <App />
+      </StrictMode>,
+    );
+    await screen.findByText("Live");
+
+    unmount();
+
+    expect(sockets.closed).toBe(sockets.opened);
+  });
+
+  it("says the connection is live once the socket is up", async () => {
+    serve([]);
+
+    renderApp();
+
+    expect(await screen.findByText("Live")).toBeInTheDocument();
   });
 
   it("offers the name this browser last posted under when the next room opens", async () => {

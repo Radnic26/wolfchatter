@@ -1,7 +1,7 @@
-import type { ChatStore, MapRoom } from "@wolfchatter/shared/client";
+import type { ChatClient, ChatStore, MapRoom } from "@wolfchatter/shared/client";
 import type { Message } from "@wolfchatter/shared/schema";
 import { useEffect, useOptimistic, useState } from "react";
-import { composeMessage, loadMessages, sendMessage } from "./message-actions.ts";
+import { composeMessage, sendMessage } from "./message-actions.ts";
 import { MessageComposer } from "./message-composer.tsx";
 import type { MessageDraft } from "./message-draft.ts";
 import { MessageList } from "./message-list.tsx";
@@ -9,6 +9,7 @@ import { useRememberedUsername } from "./use-chat-store.ts";
 
 type RoomChatProps = {
   store: ChatStore;
+  client: ChatClient;
   room: MapRoom;
   messages: readonly Message[];
 };
@@ -18,7 +19,7 @@ function untilTheServerHasIt(held: readonly Message[], sending: Message): readon
   return held.some((message) => message.id === sending.id) ? held : [...held, sending];
 }
 
-export function RoomChat({ store, room, messages }: RoomChatProps) {
+export function RoomChat({ store, client, room, messages }: RoomChatProps) {
   const username = useRememberedUsername(store);
   const [historyFailed, setHistoryFailed] = useState(false);
   const [visible, showWhileItSends] = useOptimistic(messages, untilTheServerHasIt);
@@ -26,16 +27,20 @@ export function RoomChat({ store, room, messages }: RoomChatProps) {
   const roomId = room.id;
   const isStored = room.status === "stored";
 
-  // A room this browser has only just clicked has no history to ask for, and asking would be
-  // a 404: the server learns about it in the request this one is racing.
+  // Following the room and reading it are one act, in that order: what is posted between
+  // the two then arrives on the socket instead of falling in the gap. A room this browser
+  // has only just clicked is not one to follow yet — the server learns about it in the
+  // request this one is racing, and asking for its history would be a 404.
   useEffect(() => {
     if (!isStored) return;
 
-    loadMessages(store, roomId).catch((failure: unknown) => {
+    client.subscribe(roomId).catch((failure: unknown) => {
       console.error("The messages could not be loaded", failure);
       setHistoryFailed(true);
     });
-  }, [store, roomId, isStored]);
+
+    return () => client.unsubscribe(roomId);
+  }, [client, roomId, isStored]);
 
   async function send(draft: MessageDraft) {
     const message = composeMessage(roomId, draft);

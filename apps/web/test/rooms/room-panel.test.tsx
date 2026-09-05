@@ -3,8 +3,9 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { type ChatStore, createChatStore, type MapRoom } from "@wolfchatter/shared/client";
 import type { Message } from "@wolfchatter/shared/schema";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { RoomPanel } from "../../src/rooms/room-panel.tsx";
+import { type ChatClientDouble, fakeChatClient } from "../support/chat-client.ts";
 
 const stored: MapRoom = {
   status: "stored",
@@ -26,29 +27,22 @@ const message = (body: string, username = "ana"): Message => ({
 });
 
 let store: ChatStore;
+let client: ChatClientDouble;
 
-/** The room reads its history when it opens, so what the server holds is what the panel shows. */
+/** Following a room is what loads it, so this is the history the socket client answers with. */
 function serveMessages(history: readonly Message[]): void {
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(async () => Response.json(history)),
-  );
+  client.answerSubscribe = async (roomId) => store.setMessages(roomId, history);
 }
 
 function showPanel(room: MapRoom | undefined, openExpanded = false) {
-  render(<RoomPanel store={store} room={room} failedToOpen={false} openExpanded={openExpanded} />);
+  render(
+    <RoomPanel store={store} client={client} room={room} failedToOpen={false} openExpanded={openExpanded} />,
+  );
 }
 
 beforeEach(() => {
   store = createChatStore();
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(async () => Response.json([])),
-  );
-});
-
-afterEach(() => {
-  vi.unstubAllGlobals();
+  client = fakeChatClient();
 });
 
 describe("RoomPanel", () => {
@@ -72,7 +66,9 @@ describe("RoomPanel", () => {
   });
 
   it("announces a creation that failed, in place of the room that never opened", () => {
-    render(<RoomPanel store={store} room={undefined} failedToOpen={true} openExpanded={false} />);
+    render(
+      <RoomPanel store={store} client={client} room={undefined} failedToOpen={true} openExpanded={false} />,
+    );
 
     expect(screen.getByRole("alert")).toHaveTextContent("could not be opened");
     expect(screen.queryByText("Click on the map to start a chat")).not.toBeInTheDocument();
@@ -137,30 +133,38 @@ describe("RoomPanel", () => {
     expect(screen.getByText("No messages here yet. Write the first one.")).toBeInTheDocument();
   });
 
-  it("reads the room's history when it opens", async () => {
+  it("follows the room and reads its history when it opens", async () => {
     serveMessages([message("what was said before")]);
 
     showPanel(stored);
 
     expect(await screen.findAllByText("what was said before")).not.toHaveLength(0);
+    expect(client.subscribed).toEqual([stored.id]);
   });
 
-  it("asks for no history for a room the server has not answered for yet", async () => {
-    const fetching = vi.fn(async () => Response.json([]));
-    vi.stubGlobal("fetch", fetching);
+  it("stops following a room the panel has moved off", async () => {
+    const { unmount } = render(
+      <RoomPanel store={store} client={client} room={stored} failedToOpen={false} openExpanded={false} />,
+    );
+    await waitFor(() => expect(client.subscribed).toEqual([stored.id]));
 
+    unmount();
+
+    expect(client.unsubscribed).toEqual([stored.id]);
+  });
+
+  it("follows nothing for a room the server has not answered for yet", async () => {
     showPanel(pending);
 
     await waitFor(() => expect(screen.getByRole("log")).toBeInTheDocument());
-    expect(fetching).not.toHaveBeenCalled();
+    expect(client.subscribed).toEqual([]);
   });
 
   it("says so when the history cannot be read, rather than showing an empty room", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => Response.json({}, { status: 500 })),
-    );
+    client.answerSubscribe = async () => {
+      throw new Error("the server answered 500");
+    };
 
     showPanel(stored);
 

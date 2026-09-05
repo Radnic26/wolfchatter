@@ -1,10 +1,11 @@
-import type { ChatStore, MapRoom } from "@wolfchatter/shared/client";
+import type { ChatClient, ChatStore, MapRoom } from "@wolfchatter/shared/client";
 import { useState } from "react";
 import { RoomChat } from "../messages/room-chat.tsx";
 import { useRoomMessages } from "../messages/use-chat-store.ts";
 
 type RoomPanelProps = {
   store: ChatStore;
+  client: ChatClient;
   room: MapRoom | undefined;
   failedToOpen: boolean;
   openExpanded: boolean;
@@ -76,7 +77,7 @@ function MapEmptyState() {
  * column of the reference. One component either way, because the difference is entirely in
  * the layout — there is no second copy of the panel to keep in step.
  */
-export function RoomPanel({ store, room, failedToOpen, openExpanded }: RoomPanelProps) {
+export function RoomPanel({ store, client, room, failedToOpen, openExpanded }: RoomPanelProps) {
   const [expanded, setExpanded] = useState(openExpanded);
   const messages = useRoomMessages(store, room?.id);
   const newest = messages.at(-1);
@@ -109,7 +110,7 @@ export function RoomPanel({ store, room, failedToOpen, openExpanded }: RoomPanel
           <MapEmptyState />
         </div>
       ) : (
-        <RoomChat store={store} room={room} messages={messages} />
+        <RoomChat store={store} client={client} room={room} messages={messages} />
       )}
     </section>
   );

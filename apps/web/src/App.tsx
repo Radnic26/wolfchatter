@@ -2,16 +2,19 @@ import { createChatStore } from "@wolfchatter/shared/client";
 import type { LatLng } from "leaflet";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { AppHeader } from "./components/app-header.tsx";
+import { browserUsernameStorage } from "./lib/browser-username-storage.ts";
+import { randomUuid } from "./lib/random-uuid.ts";
 import { ChatMap } from "./map/chat-map.tsx";
 import { loadRooms, openRoomAt } from "./rooms/room-actions.ts";
 import { RoomPanel } from "./rooms/room-panel.tsx";
 import { selectRoom, useSelectedRoomId } from "./rooms/use-selected-room.ts";
 
 export function App() {
-  const [store] = useState(createChatStore);
+  const [store] = useState(() => createChatStore(browserUsernameStorage()));
   const { rooms } = useSyncExternalStore(store.subscribe, store.getSnapshot);
   const selectedRoomId = useSelectedRoomId();
   const [failedToOpen, setFailedToOpen] = useState(false);
+  const [tappedRoomId, setTappedRoomId] = useState<string | null>(null);
 
   useEffect(() => {
     loadRooms(store).catch((failure: unknown) => {
@@ -19,15 +22,27 @@ export function App() {
     });
   }, [store]);
 
+  /**
+   * The room is selected on the tap rather than on the answer, so the panel is there within
+   * the budget NFR-1 sets, and a tap on the map is also the one gesture that says "I came
+   * here to write": below 768 px it opens the sheet, where a tap on a marker leaves the peek.
+   */
   async function openRoom(point: LatLng) {
+    const opening = { id: randomUuid(), lat: point.lat, lng: point.lng };
+
     setFailedToOpen(false);
+    setTappedRoomId(opening.id);
+    selectRoom(opening.id);
+
     try {
-      selectRoom(await openRoomAt(store, { lat: point.lat, lng: point.lng }));
+      await openRoomAt(store, opening);
     } catch (failure) {
       console.error("The chatroom could not be opened", failure);
       setFailedToOpen(true);
     }
   }
+
+  const room = rooms.find((open) => open.id === selectedRoomId);
 
   return (
     <div className="flex h-dvh flex-col bg-ground text-ink">
@@ -41,7 +56,13 @@ export function App() {
             onTapMap={openRoom}
           />
         </div>
-        <RoomPanel room={rooms.find((room) => room.id === selectedRoomId)} failedToOpen={failedToOpen} />
+        <RoomPanel
+          key={room?.id ?? "no room"}
+          store={store}
+          room={room}
+          failedToOpen={failedToOpen}
+          openExpanded={room !== undefined && room.id === tappedRoomId}
+        />
       </div>
     </div>
   );

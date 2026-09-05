@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { Room } from "@wolfchatter/shared/schema";
+import type { Message, Room } from "@wolfchatter/shared/schema";
 import { StrictMode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "../src/App.tsx";
@@ -25,13 +25,28 @@ const room = (overrides: Partial<Room> = {}): Room => ({
  * because that is the contract the real endpoint keeps and the whole point of minting it
  * on this side.
  */
-function serve(stored: readonly Room[], ...names: string[]): { opened: string[] } {
+function serve(stored: readonly Room[], ...names: string[]): { opened: string[]; posted: Message[] } {
   const unnamed = [...names];
   const opened: string[] = [];
+  const posted: Message[] = [];
 
   vi.stubGlobal(
     "fetch",
-    vi.fn(async (_url: string, request?: RequestInit) => {
+    vi.fn(async (url: string, request?: RequestInit) => {
+      const path = String(url);
+
+      if (path.endsWith("/messages")) {
+        const roomId = String(path.split("/").at(-2));
+        if (request?.method !== "POST") {
+          return Response.json(posted.filter((message) => message.roomId === roomId));
+        }
+
+        const written = JSON.parse(String(request.body)) as Omit<Message, "roomId" | "createdAt">;
+        const message = { ...written, roomId, createdAt: "2026-09-05T10:00:00.000Z" };
+        posted.push(message);
+        return Response.json(message, { status: 201 });
+      }
+
       if (request?.method !== "POST") return Response.json(stored);
 
       const point = JSON.parse(String(request.body)) as { id: string; lat: number; lng: number };
@@ -42,7 +57,7 @@ function serve(stored: readonly Room[], ...names: string[]): { opened: string[] 
     }),
   );
 
-  return { opened };
+  return { opened, posted };
 }
 
 /**
@@ -68,6 +83,7 @@ function renderApp() {
 beforeEach(() => {
   leafletTestbed.reset();
   window.history.replaceState(null, "", "/");
+  localStorage.clear();
 });
 
 afterEach(() => {
@@ -100,8 +116,14 @@ describe("App", () => {
     await screen.findByText("Click on the map to start a chat");
     tapMap();
 
+    // The panel is the room's before the round trip, because NFR-1 gives it 100 ms; the name
+    // is the only part that waits, and the composer with it, since the room can still fail.
     expect(screen.getByRole("button", { name: "New chatroom" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Opening the chatroom" })).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("write message here")).toBeDisabled();
+
     expect(await screen.findByRole("heading", { name: "Chatroom 3" })).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("write message here")).toBeEnabled();
   });
 
   it("names the open room in the address, so the link can be shared", async () => {
@@ -160,6 +182,78 @@ describe("App", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent("could not be opened");
     expect(screen.queryAllByTestId("marker")).toHaveLength(0);
+  });
+
+  it("keeps the message that was written in the room it was written in", async () => {
+    const user = userEvent.setup();
+    const server = serve([], "Chatroom 3");
+
+    renderApp();
+    await screen.findByText("Click on the map to start a chat");
+    tapMap();
+    await screen.findByRole("heading", { name: "Chatroom 3" });
+
+    await user.type(screen.getByPlaceholderText("write your user name here"), "ana");
+    await user.type(screen.getByPlaceholderText("write message here"), "first light{Enter}");
+
+    expect(await screen.findByText("first light")).toBeInTheDocument();
+    await waitFor(() => expect(server.posted).toHaveLength(1));
+    expect(server.posted[0]).toMatchObject({ username: "ana", body: "first light" });
+  });
+
+  it("shows what was written before, which is what a reload and a second browser see", async () => {
+    const user = userEvent.setup();
+    const stored = room({ name: "Chatroom 1" });
+    const server = serve([stored]);
+    server.posted.push({
+      id: randomUUID(),
+      roomId: stored.id,
+      username: "bogdan",
+      body: "written in another browser",
+      createdAt: "2026-09-05T10:00:00.000Z",
+    });
+
+    renderApp();
+    await user.click(await screen.findByRole("button", { name: "Chatroom 1" }));
+
+    // In the list, and again in the peek the collapsed sheet shows.
+    expect(await screen.findAllByText("written in another browser")).toHaveLength(2);
+  });
+
+  it("offers the name this browser last posted under when the next room opens", async () => {
+    const user = userEvent.setup();
+    const second = room({ name: "Chatroom 2", lat: 38.7, lng: -9.1 });
+    serve([room({ name: "Chatroom 1" }), second]);
+
+    renderApp();
+    await user.click(await screen.findByRole("button", { name: "Chatroom 1" }));
+    await user.type(screen.getByPlaceholderText("write your user name here"), "ana");
+    await user.type(screen.getByPlaceholderText("write message here"), "first light{Enter}");
+    await screen.findAllByText("first light");
+
+    await user.click(screen.getByRole("button", { name: "Chatroom 2" }));
+
+    expect(screen.getByPlaceholderText("write your user name here")).toHaveValue("ana");
+  });
+
+  it("opens the sheet for a room the map was tapped to make, because that tap came to write", async () => {
+    serve([], "Chatroom 3");
+
+    renderApp();
+    await screen.findByText("Click on the map to start a chat");
+    tapMap();
+
+    expect(await screen.findByRole("button", { name: "Collapse the chatroom" })).toBeInTheDocument();
+  });
+
+  it("leaves the sheet a peek for a marker, because that tap came to look", async () => {
+    const user = userEvent.setup();
+    serve([room({ name: "Chatroom 1" })]);
+
+    renderApp();
+    await user.click(await screen.findByRole("button", { name: "Chatroom 1" }));
+
+    expect(screen.getByRole("button", { name: "Expand the chatroom" })).toBeInTheDocument();
   });
 
   it("says so, and keeps the map, when the stored rooms cannot be loaded", async () => {

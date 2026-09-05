@@ -39,6 +39,22 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
+    # The suite runs the database tests against every driver it can reach, so with this
+    # service up the same specs are proven on PGlite and on the PostgreSQL of production.
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: wolfchatter
+          POSTGRES_DB: wolfchatter
+          POSTGRES_PASSWORD: wolfchatter
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U wolfchatter -d wolfchatter"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -48,6 +64,8 @@ jobs:
       - run: npm ci
       - name: Tests with the 100% coverage gate
         run: npm run test
+        env:
+          DATABASE_URL: postgres://wolfchatter:wolfchatter@localhost:5432/wolfchatter
 
   build:
     runs-on: ubuntu-latest

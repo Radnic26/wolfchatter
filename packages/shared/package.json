@@ -4,6 +4,13 @@
   "private": true,
   "type": "module",
   "description": "Schemas, protocol and client state shared by the server, the web app and any future native shell",
+  "exports": {
+    "./protocol": "./src/protocol/index.ts",
+    "./schema": "./src/schema/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
   "dependencies": {
     "zod": "4.5.4"
   }

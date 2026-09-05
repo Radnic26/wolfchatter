@@ -1,11 +1,9 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="apps/web/public/brand/mark-dark.svg">
-    <img src="apps/web/public/brand/mark-light.svg" alt="" width="88" height="88">
+    <source media="(prefers-color-scheme: dark)" srcset="apps/web/public/brand/wordmark-dark.svg">
+    <img src="apps/web/public/brand/wordmark-light.svg" alt="Wolfchatter" width="440">
   </picture>
 </p>
-
-<h1 align="center">Wolfchatter</h1>
 
 <p align="center"><strong>Chat that lives on the map.</strong></p>
 

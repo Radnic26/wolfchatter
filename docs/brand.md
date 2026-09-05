@@ -58,7 +58,8 @@ Five marks, one visual grammar: a geometric line-art monogram on a 64 grid, 3.5 
 
 | File | Mark | Role |
 |---|---|---|
-| `brand/mark-{light,dark}.svg` | Two Pins | The primary mark: app header and README. The only one that survives at 16 px unchanged. |
+| `brand/wordmark-{light,dark}.svg` | Wordmark | The primary logo wherever there is room for the name: the README and the app header. "Wolf" is Archivo ExtraBold in ink, "chatter" is Kaushan Script in the accent. |
+| `brand/mark-{light,dark}.svg` | Two Pins | The mark alone, for the places the wordmark will not fit. The only one that survives at 16 px unchanged. |
 | `brand/icon-{light,dark}.svg` | Viewport | The app icon, and the PWA icon when that lands |
 | `favicon.svg` | Viewport | The same mark with the theme switch built into the file, so the tab icon needs no second request |
 | `brand/state-map-{light,dark}.svg` | Dropped Pin | Empty state on the map, before any room exists |
@@ -67,7 +68,9 @@ Five marks, one visual grammar: a geometric line-art monogram on a 64 grid, 3.5 
 
 **Clear space** on every side is one quarter of the mark's width. **Minimum size is 16 px**; below that the 3.5 strokes close up and the mark turns into a blob.
 
-**Do not**: recolour a mark outside the palette, add a drop shadow, stretch it to a non-square box, or set the wordmark as text inside an SVG — GitHub does not load external fonts inside SVG, so the README carries the mark as an image and the name as a markdown title.
+**The wordmark carries no text.** Its letters are outlines, converted from the two fonts this repository already hosts, so it renders identically everywhere — GitHub does not load external fonts inside an SVG, and a wordmark set as SVG text would fall back to something else on the one page that matters most. Regenerate it only if the fonts or the spelling change, and from those same font files.
+
+**Do not**: recolour a mark outside the palette, add a drop shadow, stretch a square mark to a non-square box, or re-set the wordmark as live text.
 
 ## 4. Where the files live
 

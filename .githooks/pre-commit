@@ -1,0 +1,42 @@
+#!/usr/bin/env sh
+# Refuses a commit that would leak a secret, then holds it to the same lint and type
+# rules CI applies. Activated by `npm run hooks`, which points core.hooksPath here.
+set -eu
+
+# grep exits 1 when nothing matches, which is the good case here; a higher status means
+# a broken pattern, and a secret scanner that fails open is worse than no scanner at all.
+filter() {
+	grep "$@" || [ $? -eq 1 ]
+}
+
+staged=$(git diff --cached --name-only --diff-filter=ACMR)
+[ -n "$staged" ] || exit 0
+
+for file in $staged; do
+	case "$file" in
+	.env.example) ;;
+	.env | .env.*)
+		echo "pre-commit: $file is git-ignored on purpose. Only .env.example belongs in the history." >&2
+		exit 1
+		;;
+	esac
+done
+
+# Checked against the staged content rather than the working tree, so an unstaged edit
+# cannot hide a value that is about to be committed.
+added_lines=$(git diff --cached -U0 | sed -n 's/^+\([^+].*\)/\1/p')
+assignments=$(printf '%s\n' "$added_lines" |
+	filter -E '(_KEY|_TOKEN|_SECRET|_PASSWORD)[[:space:]]*=|DATABASE_URL[[:space:]]*=[[:space:]]*postgres')
+credentials=$(printf '%s\n' "$assignments" |
+	filter -Ev "=[[:space:]]*[\"']*[[:space:]]*$" |
+	filter -Eiv "change-?me|your-|placeholder|example|xxx|\.\.\.|<[A-Za-z]|\\\$\{?[A-Za-z_]+\}?")
+
+if [ -n "$credentials" ]; then
+	echo "pre-commit: these staged lines look like real credentials." >&2
+	printf '%s\n' "$credentials" >&2
+	echo "Use a placeholder, or commit with --no-verify if you are certain." >&2
+	exit 1
+fi
+
+npx --no-install biome check --staged --no-errors-on-unmatched --error-on-warnings
+npm run --silent typecheck

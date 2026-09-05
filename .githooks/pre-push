@@ -1,0 +1,6 @@
+#!/usr/bin/env sh
+# The branch that reaches GitHub has already passed the tests and the coverage gate,
+# so CI confirms the result rather than discovering it.
+set -eu
+
+npm run --silent test

@@ -1,0 +1,21 @@
+#!/usr/bin/env sh
+# Conventional Commits, so the delivery plan and the history read the same way.
+set -eu
+
+subject=$(head -1 "$1")
+
+case "$subject" in
+"Merge "* | "Revert "* | "fixup!"* | "squash!"*) exit 0 ;;
+esac
+
+if ! printf '%s' "$subject" | grep -qE '^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\([a-z0-9.-]+\))?!?: .+'; then
+	echo "commit-msg: '$subject'" >&2
+	echo "Expected <type>[(scope)][!]: <description>, for example 'feat: add the message form'." >&2
+	echo "Types: build chore ci docs feat fix perf refactor revert style test" >&2
+	exit 1
+fi
+
+if [ "${#subject}" -gt 72 ]; then
+	echo "commit-msg: the subject is ${#subject} characters; keep it to 72 so git log stays readable." >&2
+	exit 1
+fi

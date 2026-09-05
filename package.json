@@ -1,0 +1,47 @@
+{
+  "name": "wolfchatter",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Real-time chat on a Leaflet map",
+  "license": "MIT",
+  "engines": {
+    "node": ">=24.16"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n server,web -c blue,magenta \"npm run dev --workspace apps/server\" \"npm run dev --workspace apps/web\"",
+    "build": "npm run build --workspace apps/web",
+    "start": "./start-wolfchatter",
+    "lint": "biome ci .",
+    "format": "biome check --write .",
+    "typecheck": "npm run typecheck --workspaces --if-present && tsc --noEmit -p scripts/start/tsconfig.json",
+    "test": "vitest run --coverage",
+    "check": "npm run lint && npm run typecheck && npm run test",
+    "hooks": "git config core.hooksPath .githooks"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.12",
+    "@tailwindcss/vite": "4.3.3",
+    "@testing-library/jest-dom": "7.0.1",
+    "@testing-library/react": "16.3.3",
+    "@testing-library/user-event": "14.6.7",
+    "@types/leaflet": "1.9.22",
+    "@types/node": "24.13.3",
+    "@types/pg": "8.23.1",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.7",
+    "@types/ws": "8.18.1",
+    "@vitejs/plugin-react": "6.1.1",
+    "@vitest/coverage-v8": "5.0.0",
+    "concurrently": "10.0.5",
+    "jsdom": "30.0.1",
+    "tailwindcss": "4.3.3",
+    "typescript": "7.0.2",
+    "vite": "8.2.2",
+    "vitest": "5.0.0"
+  }
+}

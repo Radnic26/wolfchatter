@@ -21,7 +21,9 @@ The scaffold (delivery-plan PR 3) is what makes these true; before it lands they
 - `apps/server` — Hono app, WebSocket hub, SQL migrations, the `Db` interface over `pg` and PGlite
 - `apps/web` — the React SPA, and the only workspace allowed to touch the DOM or Leaflet
 - `packages/shared` — Zod schemas, the WS protocol, `ChatStore`, `ChatClient`; no DOM, no `react-dom`, no Leaflet, so a native shell can reuse it unchanged
-- Folders group by feature, not by file type; tests sit next to their source as `*.test.ts` / `*.test.tsx`
+- Inside `src/`, a folder is a feature and owns everything that feature needs: `rooms/`, `messages/`, `map/` in the web app; `rooms/`, `messages/`, `db/`, `ws/` on the server. Colocate first, extract later — something moves to the shared area only once a second feature uses it.
+- The shared area is deliberately small: `components/` for UI more than one feature renders, `lib/` for technical functions that belong to no feature. Every file there is named for what it does (`format-timestamp.ts`), never `utils.ts` or `helpers.ts`.
+- Every workspace keeps its tests in its own `test/` folder, mirroring `src/` file for file: `src/rooms/panel.tsx` is tested by `test/rooms/panel.test.tsx`. Source files stay free of test code, and the test tree reads as the spec of the source tree.
 
 ## Rules that differ from defaults
 
@@ -43,7 +45,7 @@ The brief grades output quality and says structure and readability matter, for t
 - Comments say why, never what: a constraint, a rejected alternative, a protocol quirk; no commented-out code, no TODOs, no restating the signature.
 - One thing per function, one level of abstraction, early returns instead of nested conditionals; pure functions for logic, I/O at the edges.
 - KISS: the simplest thing that satisfies the PRD, no speculative generality, no abstraction before the third repetition; extend through the seams that already exist (`Db`, `Broadcaster`, the storage adapter) instead of adding layers.
-- Files grouped by feature, the same shape in every workspace, so the next feature is obvious to a stranger; test names describe behaviour, so the test file reads as the spec.
+- Files grouped by feature, not by file type, with a small shared area (`components/`, `lib/`) that a thing earns its way into by having a second caller; the same shape in every workspace, so the next feature is obvious to a stranger. The `test/` tree mirrors `src/`, and test names describe behaviour, so it reads as the spec of the source.
 
 ## Gotchas
 

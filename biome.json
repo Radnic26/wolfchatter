@@ -3,6 +3,11 @@
   "files": {
     "includes": ["**", "!**/dist", "!**/coverage", "!data", "!package-lock.json"]
   },
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
+    }
+  },
   "formatter": {
     "enabled": true,
     "useEditorconfig": true,

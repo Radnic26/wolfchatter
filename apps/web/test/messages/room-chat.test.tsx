@@ -23,6 +23,14 @@ function Chatting({ store }: { store: ChatStore }) {
 type Posted = { id: string; username: string; body: string };
 
 /**
+ * The hour the server stamps a message with, written as local parts and sent as the instant
+ * they name. What the list renders is then the same string on any machine, where a literal
+ * `Z` would read as one hour here and another on a runner set to UTC.
+ */
+const acceptedAt = new Date(2026, 8, 5, 12, 0);
+const acceptedAtReads = "05/09/2026 12:00";
+
+/**
  * The history, and then a hold on the post: the answer is released by the test, so what the
  * assertions see in between is the room as it looks while the message is still in flight.
  */
@@ -42,7 +50,7 @@ function serve() {
       server.received = posted;
       const answer = await held;
       return Response.json(
-        { ...answer, id: posted.id, roomId: room.id, createdAt: "2026-09-05T12:00:00.000Z" },
+        { ...answer, id: posted.id, roomId: room.id, createdAt: acceptedAt.toISOString() },
         { status: 201 },
       );
     }),
@@ -107,7 +115,7 @@ describe("RoomChat", () => {
     const sent = server.received;
     if (sent === undefined) throw new Error("the message was never posted");
     act(() => {
-      store.addMessage({ ...sent, roomId: room.id, createdAt: "2026-09-05T12:00:00.000Z" });
+      store.addMessage({ ...sent, roomId: room.id, createdAt: acceptedAt.toISOString() });
     });
 
     expect(screen.getAllByText("hello")).toHaveLength(1);
@@ -124,7 +132,7 @@ describe("RoomChat", () => {
 
     server.release({ id: "", username: "ana", body: "hello" });
 
-    expect(await screen.findByText("05/09/2026 15:00")).toBeInTheDocument();
+    expect(await screen.findByText(acceptedAtReads)).toBeInTheDocument();
   });
 
   it("takes the message back off the list when it could not be sent", async () => {

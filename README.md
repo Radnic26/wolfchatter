@@ -1,8 +1,38 @@
-# Wolfchatter
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="apps/web/public/brand/mark-dark.svg">
+    <img src="apps/web/public/brand/mark-light.svg" alt="" width="88" height="88">
+  </picture>
+</p>
 
-Real-time chat on a map. Click anywhere on the map to open a chatroom pinned to that spot, click an existing pin to join its conversation, and post messages that everyone viewing the room receives live.
+<h1 align="center">Wolfchatter</h1>
 
-> **Status:** scaffold. The technical PRD was written and committed before any code, as the brief asks. The map, the rooms and the messages arrive in the pull requests listed in the delivery plan; today the app serves its shell and a health endpoint.
+<p align="center"><strong>Chat that lives on the map.</strong></p>
+
+<p align="center">
+Click anywhere in the world and a room opens, pinned to that spot.<br>
+Click a pin and you are in the conversation that belongs to that place.<br>
+Post a message and everyone looking at the same spot sees it arrive.
+</p>
+
+---
+
+A chatroom is usually a name in a list. Here it is a **place**: the Old Town square, a
+festival field, the office you are standing outside of. Rooms are created by dropping a
+pin, so the map is the directory, and the conversation is anchored to somewhere real
+rather than to a topic somebody had to invent.
+
+Everything is built to be run by someone who has never seen the repository before. One
+command from a fresh clone brings up the app, the API and a real PostgreSQL — or, on a
+machine with nothing installed at all, a PostgreSQL compiled to WebAssembly, so there is
+still nothing to set up. Messages survive reloads, arrive live over a WebSocket, and
+reconcile themselves after a dropped connection instead of quietly losing what you
+missed.
+
+> **Status:** the persistence layer and the HTTP API are in. The map, the message panel
+> and the live socket land in the pull requests listed in the
+> [delivery plan](docs/delivery-plan.md); the app today serves its shell, the health
+> endpoint and the rooms and messages API.
 
 ## Running it
 
@@ -60,6 +90,7 @@ Each workspace keeps its tests in its own `test/` folder, mirroring `src/` file 
 |---|---|
 | [docs/PRD.md](docs/PRD.md) | Functional requirements, assumptions and the up-front technical decisions |
 | [docs/architecture.md](docs/architecture.md) | The decisions in depth: dependency assessment, rejected alternatives, data model, protocol, quality policy |
+| [docs/brand.md](docs/brand.md) | The brand system: colour roles and their measured contrast, the type scale, the marks and their rules |
 | [docs/delivery-plan.md](docs/delivery-plan.md) | The sequence of pull requests, the time budget and what gets cut first |
 | [CLAUDE.md](CLAUDE.md) + [.claude/](.claude/) | The AI configuration this repository is built under, committed before the first line of code |
 
@@ -69,7 +100,7 @@ Every package has to earn its place: it stays when it removes real work or real 
 
 **Runtime:** `hono`, `@hono/node-server`, `@hono/zod-validator`, `ws`, `zod`, `@electric-sql/pglite`, `pg`, `react`, `react-dom`, `leaflet`, `react-leaflet`.
 
-**Replaced by built-ins:** `dotenv`, `ts-node`/`tsx` and `nodemon` by Node 24's `--env-file-if-exists`, native type stripping and `--watch`; `uuid` by `crypto.randomUUID()`; `husky`, `lint-staged` and `commitlint` by a versioned `.githooks/` folder; Prettier, ESLint and its plugin stack by Biome; an ORM by numbered SQL migrations and a five-line `Db` interface; TanStack Query by the shared store the socket already feeds.
+**Replaced by built-ins:** `dotenv`, `ts-node`/`tsx` and `nodemon` by Node 24's `--env-file-if-exists`, native type stripping and `--watch`; `uuid` by `crypto.randomUUID()`; `husky`, `lint-staged` and `commitlint` by a versioned `.githooks/` folder; Prettier, ESLint and its plugin stack by Biome; an ORM by numbered SQL migrations and a four-call `Db` interface; TanStack Query by the shared store the socket already feeds.
 
 ## License
 

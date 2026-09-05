@@ -1,0 +1,86 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Wolfchatter self-review round",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["round", "branch", "findings", "summary"],
+  "properties": {
+    "round": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Review round, matching the id prefix of every finding."
+    },
+    "branch": {
+      "type": "string",
+      "description": "Branch reviewed, as reported by git."
+    },
+    "findings": {
+      "type": "array",
+      "description": "Proposals for the author. Empty is a valid result.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "file",
+          "line",
+          "severity",
+          "issue",
+          "failureScenario",
+          "repro",
+          "suggestedFix",
+          "confidence"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^R[0-9]+-[0-9]+$"
+          },
+          "file": {
+            "type": "string",
+            "description": "Path relative to the repository root."
+          },
+          "line": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "severity": {
+            "enum": ["high", "medium", "low"]
+          },
+          "issue": {
+            "type": "string",
+            "description": "One sentence stating the defect."
+          },
+          "failureScenario": {
+            "type": "string",
+            "description": "A concrete input or state, and the wrong result it produces."
+          },
+          "repro": {
+            "type": "string",
+            "description": "The failing test to add, or the command to run. No reproduction, no finding."
+          },
+          "suggestedFix": {
+            "type": "string"
+          },
+          "confidence": {
+            "enum": ["high", "medium", "low"]
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["high", "medium", "low", "mergeable"],
+      "properties": {
+        "high": { "type": "integer", "minimum": 0 },
+        "medium": { "type": "integer", "minimum": 0 },
+        "low": { "type": "integer", "minimum": 0 },
+        "mergeable": {
+          "type": "boolean",
+          "description": "Whether the branch is mergeable as it stands."
+        }
+      }
+    }
+  }
+}

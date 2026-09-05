@@ -16,7 +16,7 @@ The infra and cost estimate, the self-review configuration and report, and the n
 
 ## Running it
 
-Coming with the scaffold pull request: `npm install && npm run dev` for a local run with nothing else installed, and `docker compose up --build` for the production image with a real PostgreSQL.
+Coming with the scaffold pull request: `./start-wolfchatter`, a short wizard that asks a few questions (Enter accepts every default), writes a local `.env` and starts the app with nothing else installed; `npm run dev` for the same without questions; `docker compose up --build` for the production image with a real PostgreSQL. No secrets are needed and none are committed: `.env` is git-ignored, only `.env.example` is versioned.
 
 ## License
 

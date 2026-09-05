@@ -19,6 +19,9 @@ data/
 *.log
 npm-debug.log*
 
+# Personal Claude Code overrides (.claude/settings.json is versioned on purpose)
+.claude/settings.local.json
+
 # OS and editors (shared VS Code settings are versioned on purpose)
 .DS_Store
 Thumbs.db

@@ -16,7 +16,7 @@ type PanelHeadingProps = Pick<RoomPanelProps, "room" | "failedToOpen">;
 function PanelHeading({ room, failedToOpen }: PanelHeadingProps) {
   if (failedToOpen) {
     return (
-      <p role="alert" className="text-accent text-sm">
+      <p role="alert" className="text-accent-strong text-sm">
         That chatroom could not be opened. Try again.
       </p>
     );

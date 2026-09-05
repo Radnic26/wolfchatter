@@ -9,13 +9,15 @@ type MessageComposerProps = {
 
 type ComposerProblems = DraftProblems & { send?: string };
 
-/* The accent marks the field that was refused, on the border and on the words below it. */
+/* The accent marks the field that was refused. A border is a non-text element, so the hot
+   accent clears its 3:1 there; the words below the field take the darker one. The placeholder
+   is the label a person actually reads here, so it is held to text contrast like any other. */
 const fieldClasses =
-  "min-h-11 w-full rounded-lg border border-rule bg-ground px-3 text-base outline-offset-2 placeholder:text-ink/40 aria-[invalid=true]:border-accent";
+  "min-h-11 w-full rounded-lg border border-rule bg-ground px-3 text-base outline-offset-2 placeholder:text-ink/60 aria-[invalid=true]:border-accent";
 
 function Problem({ id, children }: { id: string; children: string }) {
   return (
-    <p id={id} role="alert" className="text-accent text-sm">
+    <p id={id} role="alert" className="text-accent-strong text-sm">
       {children}
     </p>
   );
@@ -83,7 +85,7 @@ export function MessageComposer({ username, disabled, onSend }: MessageComposerP
         <button
           type="submit"
           disabled={disabled || sending}
-          className="min-h-11 shrink-0 rounded-lg bg-accent px-4 font-display text-base text-ground disabled:opacity-50"
+          className="min-h-11 shrink-0 rounded-lg bg-accent-strong px-4 font-display text-base text-ground disabled:opacity-50"
         >
           Submit
         </button>

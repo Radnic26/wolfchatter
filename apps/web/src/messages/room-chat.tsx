@@ -47,7 +47,7 @@ export function RoomChat({ store, room, messages }: RoomChatProps) {
   return (
     <>
       {historyFailed ? (
-        <p role="alert" className="px-4 text-accent text-sm">
+        <p role="alert" className="px-4 text-accent-strong text-sm">
           The earlier messages could not be loaded.
         </p>
       ) : null}

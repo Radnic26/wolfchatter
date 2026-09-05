@@ -36,7 +36,7 @@ The scaffold (delivery-plan PR 3) is what makes these true; before it lands they
 - Never assume. When the PRD, a finding or an expected behaviour is unclear, do the unambiguous part and ask Radu one precise question with the options you see. Never pick a default silently.
 - Review and audit findings are proposals. Present each one with its reproduction and wait for Radu's approval of that finding before writing the fix.
 - Git is approval-gated, and the gate is the diff: run `npm run check`, **show Radu the diff and the results, and wait**. Commit, push or open a pull request only after he says OK for that step. Committing before he has seen the diff is the one mistake that cannot be undone politely — once it is committed there is no diff left for him to read, so a working tree that is ready but uncommitted is the correct state to hand over, every time. Never merge, never rebase, never force-push — he reviews on GitHub and merges by hand.
-- Biome owns formatting and lint; never hand-format and never work around it. Commit messages follow Conventional Commits.
+- Biome owns formatting and lint; never hand-format and never work around it. A suppression is the exception and stays one: inline only, at the line it excuses, with a reason that says why the rule is wrong *there* — never a rule disabled in `biome.json`, never a whole file ignored. Biome reports a suppression that has stopped being needed, so the exception cleans itself up. Commit messages follow Conventional Commits.
 
 ## Code style
 

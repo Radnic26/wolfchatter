@@ -96,8 +96,6 @@ export function mockReactLeaflet() {
       // A `div` with `role="button"`, which is what Leaflet builds. A real `<button>` turns
       // Enter into a click on its own, and a spec written against one would pass with no
       // key handler at all — the map does not, which is the whole point of handling keys.
-      // A real <button> would activate on Enter by itself, and a spec written against one
-      // would pass with no key handler on the marker at all.
       return (
         // biome-ignore lint/a11y/useSemanticElements: this is the div Leaflet itself builds
         <div

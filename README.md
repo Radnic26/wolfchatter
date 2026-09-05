@@ -2,21 +2,74 @@
 
 Real-time chat on a map. Click anywhere on the map to open a chatroom pinned to that spot, click an existing pin to join its conversation, and post messages that everyone viewing the room receives live.
 
-> **Status:** planning complete, implementation in progress. The technical PRD was written and committed before any code, as the brief asks; the application is delivered in small pull requests listed in the delivery plan.
+> **Status:** scaffold. The technical PRD was written and committed before any code, as the brief asks. The map, the rooms and the messages arrive in the pull requests listed in the delivery plan; today the app serves its shell and a health endpoint.
+
+## Running it
+
+One command from a fresh clone. Docker is the only prerequisite, and even that is optional.
+
+```sh
+git clone https://github.com/Radnic26/wolfchatter.git
+cd wolfchatter
+./start-wolfchatter
+```
+
+The wizard asks two questions and Enter answers both. The first one decides how the app runs:
+
+| Choice | What starts | Where | Reloads on edit |
+|---|---|---|---|
+| Everything in Docker *(default)* | the production image and PostgreSQL | `http://localhost:3000` | no |
+| App here, PostgreSQL in Docker | Vite and the API on your machine, the database in a container | `http://localhost:5173` | yes |
+| Everything here, embedded database | Vite and the API, with PostgreSQL compiled to WebAssembly | `http://localhost:5173` | yes |
+
+Without a running Docker daemon only the third is offered, so the command still works on a machine with nothing installed. `./start-wolfchatter --yes` skips the questions, which is also what CI and a piped stdin get.
+
+The wizard generates a database password, writes it to `.env` with mode `0600`, and installs before it starts. `.env` is git-ignored; only `.env.example` is committed, and nothing in it is secret.
+
+Once `.env` exists, these do the same thing without the questions:
+
+```sh
+npm run dev                  # server and Vite together, proxied onto one origin
+docker compose up --build    # the production image against a real PostgreSQL
+```
+
+## Working on it
+
+```sh
+npm run check     # biome ci + tsc --noEmit per workspace + vitest with the coverage gate
+npm run format    # let Biome fix formatting and imports
+npm run hooks     # once per clone: points git at the versioned .githooks/
+```
+
+`npm run check` is the gate, and CI runs it as one job per step plus a `docker` job and `npm audit`. Coverage thresholds are 100% for statements, branches, functions and lines over `apps/server/src`, `apps/web/src` and `scripts/start`; process entry points are excluded and listed in `vitest.config.ts`. Coverage-ignore comments are not allowed.
+
+Each workspace keeps its tests in its own `test/` folder, mirroring `src/` file for file.
+
+## Layout
+
+| Path | What lives there |
+|---|---|
+| `apps/server` | Hono HTTP API, the WebSocket hub, SQL migrations, the `Db` interface over `pg` and PGlite |
+| `apps/web` | the React single-page app, and the only workspace that touches the DOM or Leaflet |
+| `packages/shared` | Zod schemas, the WS protocol and the client store — no DOM, so a native shell can reuse it |
+| `scripts/start` | the first-run wizard: pure decision logic, with I/O confined to `main.ts` |
 
 ## Documents
 
 | Document | Purpose |
 |---|---|
-| [docs/PRD.md](docs/PRD.md) | Functional requirements, assumptions and the up-front technical decisions (stack, data model, real-time delivery, state management) |
-| [docs/architecture.md](docs/architecture.md) | The decisions in depth: dependency assessment, rejected alternatives, data model, protocol, quality policy, mobile path |
-| [docs/delivery-plan.md](docs/delivery-plan.md) | The sequence of pull requests, time budget and what gets cut first if time runs short |
+| [docs/PRD.md](docs/PRD.md) | Functional requirements, assumptions and the up-front technical decisions |
+| [docs/architecture.md](docs/architecture.md) | The decisions in depth: dependency assessment, rejected alternatives, data model, protocol, quality policy |
+| [docs/delivery-plan.md](docs/delivery-plan.md) | The sequence of pull requests, the time budget and what gets cut first |
+| [CLAUDE.md](CLAUDE.md) + [.claude/](.claude/) | The AI configuration this repository is built under, committed before the first line of code |
 
-The infra and cost estimate, the self-review configuration and report, and the note on working with AI tooling are added in their own pull requests (see the delivery plan).
+## Dependencies
 
-## Running it
+Every package has to earn its place: it stays when it removes real work or real risk, and it goes when a built-in or a few dozen lines do the same job. Eleven runtime packages and nineteen development ones, six of the latter being type definitions. [docs/architecture.md §1](docs/architecture.md) records each one with the alternative considered and the reason, plus what was replaced by built-ins and what was evaluated and rejected.
 
-Coming with the scaffold pull request: `./start-wolfchatter`, a short wizard that asks a few questions (Enter accepts every default), writes a local `.env` and starts the app with nothing else installed; `npm run dev` for the same without questions; `docker compose up --build` for the production image with a real PostgreSQL. No secrets are needed and none are committed: `.env` is git-ignored, only `.env.example` is versioned.
+**Runtime:** `hono`, `@hono/node-server`, `@hono/zod-validator`, `ws`, `zod`, `@electric-sql/pglite`, `pg`, `react`, `react-dom`, `leaflet`, `react-leaflet`.
+
+**Replaced by built-ins:** `dotenv`, `ts-node`/`tsx` and `nodemon` by Node 24's `--env-file-if-exists`, native type stripping and `--watch`; `uuid` by `crypto.randomUUID()`; `husky`, `lint-staged` and `commitlint` by a versioned `.githooks/` folder; Prettier, ESLint and its plugin stack by Biome; an ORM by numbered SQL migrations and a five-line `Db` interface; TanStack Query by the shared store the socket already feeds.
 
 ## License
 

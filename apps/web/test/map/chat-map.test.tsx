@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { MapRoom } from "@wolfchatter/shared/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -131,5 +131,54 @@ describe("ChatMap", () => {
     renderMap([cluj], null);
 
     expect(leafletTestbed.flyTo).not.toHaveBeenCalled();
+  });
+  it("opens the room of the pin the keyboard is on, which Leaflet leaves undone", async () => {
+    const user = userEvent.setup();
+    const onSelectRoom = renderMap([cluj, lisbon], null);
+    screen.getByRole("button", { name: "Chatroom 2" }).focus();
+
+    await user.keyboard("{Enter}");
+
+    expect(onSelectRoom).toHaveBeenCalledWith(lisbon.id);
+  });
+
+  it("opens it on Space too, and keeps Space from scrolling the map away", () => {
+    const onSelectRoom = renderMap([cluj], null);
+    const pin = screen.getByRole("button", { name: "Chatroom 1" });
+
+    const notScrolled = !fireEvent.keyDown(pin, { key: " " });
+
+    expect(onSelectRoom).toHaveBeenCalledWith(cluj.id);
+    expect(notScrolled).toBe(true);
+  });
+
+  it("leaves every other key to the map, which pans on the arrows", async () => {
+    const user = userEvent.setup();
+    const onSelectRoom = renderMap([cluj], null);
+    screen.getByRole("button", { name: "Chatroom 1" }).focus();
+
+    await user.keyboard("{ArrowRight}");
+
+    expect(onSelectRoom).not.toHaveBeenCalled();
+  });
+
+  it("animates its own zoom and follows a pin that takes focus, by default", () => {
+    renderMap([cluj], null);
+
+    expect(screen.getByTestId("map").dataset.zoomAnimation).toBe("true");
+    expect(screen.getByTestId("map").dataset.fadeAnimation).toBe("true");
+    expect(screen.getByTestId("map").dataset.markerZoomAnimation).toBe("true");
+    expect(screen.getByTestId("marker").dataset.autoPanOnFocus).toBe("true");
+  });
+
+  it("stops animating anything of its own when motion is unwelcome", () => {
+    vi.stubGlobal("matchMedia", () => ({ matches: true }));
+
+    renderMap([cluj], null);
+
+    expect(screen.getByTestId("map").dataset.zoomAnimation).toBe("false");
+    expect(screen.getByTestId("map").dataset.fadeAnimation).toBe("false");
+    expect(screen.getByTestId("map").dataset.markerZoomAnimation).toBe("false");
+    expect(screen.getByTestId("marker").dataset.autoPanOnFocus).toBe("false");
   });
 });

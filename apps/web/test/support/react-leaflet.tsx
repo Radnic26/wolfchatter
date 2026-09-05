@@ -55,35 +55,64 @@ type MarkerProps = {
   icon: { options: { html?: string } };
   zIndexOffset: number;
   title: string;
-  eventHandlers: { click: () => void };
+  autoPanOnFocus: boolean;
+  eventHandlers: {
+    click: () => void;
+    keydown: (event: { originalEvent: KeyboardEvent }) => void;
+  };
+};
+
+type MapProps = {
+  children: ReactNode;
+  zoomAnimation: boolean;
+  fadeAnimation: boolean;
+  markerZoomAnimation: boolean;
 };
 
 export function mockReactLeaflet() {
   return {
-    MapContainer: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+    MapContainer: ({ children, zoomAnimation, fadeAnimation, markerZoomAnimation }: MapProps) => (
+      <div
+        data-testid="map"
+        data-zoom-animation={String(zoomAnimation)}
+        data-fade-animation={String(fadeAnimation)}
+        data-marker-zoom-animation={String(markerZoomAnimation)}
+      >
+        {children}
+      </div>
+    ),
 
     TileLayer: ({ url, attribution, maxZoom }: { url: string; attribution: string; maxZoom: number }) => (
       <div data-testid="tiles" data-url={url} data-attribution={attribution} data-max-zoom={maxZoom} />
     ),
 
-    Marker: ({ position, icon, zIndexOffset, title, eventHandlers }: MarkerProps) => {
+    Marker: ({ position, icon, zIndexOffset, title, autoPanOnFocus, eventHandlers }: MarkerProps) => {
       // Leaflet writes `title` onto the icon element when it builds it, and react-leaflet
       // updates only position, icon, z-index, opacity and draggable afterwards. So a name
       // that arrives after mount never reaches the real map, and a double that renders the
       // current one would let a test prove something the map does not do.
       const [nameAtMount] = useState(title);
 
+      // A `div` with `role="button"`, which is what Leaflet builds. A real `<button>` turns
+      // Enter into a click on its own, and a spec written against one would pass with no
+      // key handler at all — the map does not, which is the whole point of handling keys.
+      // A real <button> would activate on Enter by itself, and a spec written against one
+      // would pass with no key handler on the marker at all.
       return (
-        <button
-          type="button"
+        // biome-ignore lint/a11y/useSemanticElements: this is the div Leaflet itself builds
+        <div
+          role="button"
+          tabIndex={0}
           data-testid="marker"
           data-position={position.join(",")}
           data-icon={icon.options.html}
           data-z={zIndexOffset}
+          data-auto-pan-on-focus={String(autoPanOnFocus)}
           onClick={eventHandlers.click}
+          onKeyDown={(event) => eventHandlers.keydown({ originalEvent: event.nativeEvent })}
         >
           {nameAtMount}
-        </button>
+        </div>
       );
     },
 

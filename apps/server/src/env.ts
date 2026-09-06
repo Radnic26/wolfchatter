@@ -8,6 +8,7 @@ const serverEnvironment = z.object({
     .default("http://localhost:5173")
     .transform((value) => value.split(",").map((origin) => origin.trim()))
     .refine((origins) => origins.every(Boolean), "must not contain an empty origin"),
+  TRUSTED_CLIENT_HEADER: z.string().min(1).optional(),
 });
 
 export type ServerConfig = z.infer<typeof serverEnvironment>;

@@ -10,6 +10,16 @@ describe("parseServerConfig", () => {
     expect(config.ALLOWED_ORIGINS).toEqual(["http://localhost:5173"]);
   });
 
+  it("names no trusted forwarding header, so the per-IP limit counts the socket peer", () => {
+    expect(parseServerConfig({}).TRUSTED_CLIENT_HEADER).toBeUndefined();
+  });
+
+  it("keeps the forwarding header a proxied deployment names", () => {
+    const config = parseServerConfig({ TRUSTED_CLIENT_HEADER: "X-Forwarded-For" });
+
+    expect(config.TRUSTED_CLIENT_HEADER).toBe("X-Forwarded-For");
+  });
+
   it("reads the port as a number", () => {
     expect(parseServerConfig({ PORT: "8080" }).PORT).toBe(8080);
   });
@@ -36,6 +46,10 @@ describe("parseServerConfig", () => {
 
   it("rejects a url that is not PostgreSQL", () => {
     expect(() => parseServerConfig({ DATABASE_URL: "mysql://u:p@db:3306/w" })).toThrow(/Invalid environment/);
+  });
+
+  it("rejects a trusted forwarding header set to nothing, rather than reading a nameless one", () => {
+    expect(() => parseServerConfig({ TRUSTED_CLIENT_HEADER: "" })).toThrow(/Invalid environment/);
   });
 
   it("rejects an allowlist with an empty entry", () => {

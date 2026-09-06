@@ -163,6 +163,25 @@ describe("the chat hub and a socket that misbehaves", () => {
     expect(answering.pings).toBe(2);
   });
 
+  it("turns a broadcast into bytes once, however many sockets it goes to", () => {
+    let namesRead = 0;
+    // JSON.stringify reads every property of the frame exactly once per call, so counting
+    // the reads of one of them counts the serialisations the fan-out paid for.
+    const opened: Room = {
+      ...room(),
+      get name() {
+        namesRead += 1;
+        return "Chatroom 1";
+      },
+    };
+    hub.hub.accept(fakeSocket());
+    hub.hub.accept(fakeSocket());
+
+    hub.hub.publishRoomCreated(opened);
+
+    expect(namesRead).toBe(1);
+  });
+
   it("drops a reader whose queue is longer than the fan-out is allowed to wait for", () => {
     const slow = fakeSocket();
     hub.hub.accept(slow);

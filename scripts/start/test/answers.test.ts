@@ -11,26 +11,25 @@ import { offeredTileSources } from "../tile-source.ts";
 
 describe("shouldAskQuestions", () => {
   it("asks when a person is at a terminal", () => {
-    expect(shouldAskQuestions([], {}, true)).toBe(true);
+    expect(shouldAskQuestions(false, {}, true)).toBe(true);
   });
 
   it("takes the defaults when stdin is piped", () => {
-    expect(shouldAskQuestions([], {}, false)).toBe(false);
+    expect(shouldAskQuestions(false, {}, false)).toBe(false);
   });
 
-  it("takes the defaults on --yes and on -y", () => {
-    expect(shouldAskQuestions(["--yes"], {}, true)).toBe(false);
-    expect(shouldAskQuestions(["-y"], {}, true)).toBe(false);
+  it("takes the defaults when the flags asked for them", () => {
+    expect(shouldAskQuestions(true, {}, true)).toBe(false);
   });
 
   it("takes the defaults under CI", () => {
-    expect(shouldAskQuestions([], { CI: "true" }, true)).toBe(false);
-    expect(shouldAskQuestions([], { CI: "1" }, true)).toBe(false);
+    expect(shouldAskQuestions(false, { CI: "true" }, true)).toBe(false);
+    expect(shouldAskQuestions(false, { CI: "1" }, true)).toBe(false);
   });
 
   it("still asks when CI is set to false or empty", () => {
-    expect(shouldAskQuestions([], { CI: "false" }, true)).toBe(true);
-    expect(shouldAskQuestions([], { CI: "" }, true)).toBe(true);
+    expect(shouldAskQuestions(false, { CI: "false" }, true)).toBe(true);
+    expect(shouldAskQuestions(false, { CI: "" }, true)).toBe(true);
   });
 });
 

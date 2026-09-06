@@ -70,7 +70,7 @@ Wolfchatter is a real-time chat on a map. A user clicks anywhere on a Leaflet ma
 
 ## 6. Delivery and verification
 
-Twelve small pull requests in this order: PRD → AI configuration → scaffold → shared schema and server → map and pins → messages → real-time → accessibility → infra estimate → audit (security, load, performance) and fixes → self-review and fixes → README and final report (`delivery-plan.md`).
+Twelve small pull requests in this order: PRD → AI configuration → scaffold → shared schema and server → map and pins → messages → real-time → accessibility → infra estimate → self-review and fixes → audit (security, load, performance) and fixes → README and final report (`delivery-plan.md`).
 
 **End-to-end check before submission:** fresh clone → `./start-wolfchatter` with Enter on every prompt (then, separately, `npm run dev` and `docker compose up --build`) → two browsers → click the map → pin and "Chatroom 1" panel in both → post from each → messages appear live in both → reload → everything persists → click the other marker → panel switches → `npm run check` green.
 

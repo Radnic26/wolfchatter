@@ -1,5 +1,5 @@
 import { type ClientFrame, parseServerFrame } from "../protocol/index.ts";
-import type { Message } from "../schema/index.ts";
+import { MESSAGE_PAGE_SIZE, type Message } from "../schema/index.ts";
 import type { ChatStore, ConnectionStatus } from "./chat-store.ts";
 
 /**
@@ -35,8 +35,9 @@ export interface ChatClientOptions {
 export interface ChatClient {
   connect(): void;
   /**
-   * Follow a room and load what it holds. The promise is the loading: a socket that is not
-   * up yet is not a failure, because the next connection catches the room up on its own.
+   * Follow a room and load what it holds. The promise is the loading, and it runs whether or
+   * not the socket is up: the history is HTTP's, so a room still opens with the connection
+   * down and the next one only adds what has been said since.
    */
   subscribe(roomId: string): Promise<void>;
   unsubscribe(roomId: string): void;
@@ -47,10 +48,17 @@ export function createChatClient({ url, store, fetchHistory }: ChatClientOptions
   const following = new Set<string>();
   /** Live messages held while a room's gap is in flight, so the gap lands ahead of them. */
   const catchingUp = new Map<string, Message[]>();
+  /**
+   * How far each room's server-ordered stream has been read. The store's own last message is
+   * not that place: one this browser posted while the socket was down sits at the end of it,
+   * and asking for the gap after that one skips everything said in the meantime.
+   */
+  const lastSeenByRoom = new Map<string, string>();
   let socket: Socket | undefined;
   let retry: unknown;
   let attempt = 0;
   let wanted = false;
+  let hasBeenLive = false;
   let connection: ConnectionStatus = "connecting";
 
   function report(status: ConnectionStatus): void {
@@ -62,17 +70,45 @@ export function createChatClient({ url, store, fetchHistory }: ChatClientOptions
     socket?.send(JSON.stringify(frame));
   }
 
+  /** A message from the socket is the server's own order, so it moves the back-fill cursor. */
+  function applyLive(message: Message): void {
+    store.addMessage(message);
+    lastSeenByRoom.set(message.roomId, message.id);
+  }
+
+  /**
+   * A room this client holds nothing of gets the newest page; one it has been reading gets
+   * only the gap, appended to what it already shows.
+   */
+  function applyPage(roomId: string, page: readonly Message[], holdsNothing: boolean): void {
+    if (holdsNothing) store.setMessages(roomId, page);
+    else for (const message of page) store.addMessage(message);
+
+    const newest = page.at(-1);
+    if (newest) lastSeenByRoom.set(roomId, newest.id);
+  }
+
   async function catchUp(roomId: string): Promise<void> {
-    const after = store.getSnapshot().messagesByRoom.get(roomId)?.at(-1)?.id;
     const waiting: Message[] = [];
     catchingUp.set(roomId, waiting);
 
     try {
-      const missed = await fetchHistory(roomId, after);
-      // A room this client holds nothing of gets the newest page; one it has been reading
-      // gets only the gap, appended to what it already shows.
-      if (after === undefined) store.setMessages(roomId, missed);
-      else for (const message of missed) store.addMessage(message);
+      // A gap longer than one page would be truncated for the life of the session, so the
+      // gap is read until a page comes back short. The cursor is the last message of the
+      // page just taken and `after` is exclusive, so each ask starts past the previous one.
+      let isPageFull = true;
+      while (isPageFull) {
+        const after = lastSeenByRoom.get(roomId);
+        const page = await fetchHistory(roomId, after);
+        // A catch-up started while this one was in flight is now the room's: writing a page
+        // read before it would put the room back to what it held then.
+        if (catchingUp.get(roomId) !== waiting) return;
+
+        applyPage(roomId, page, after === undefined);
+        // Only a gap can span pages. A room read cold is answered with the newest page, so
+        // there is nothing past it to ask for and asking would cost an empty round trip.
+        isPageFull = after !== undefined && page.length === MESSAGE_PAGE_SIZE;
+      }
     } finally {
       // Whatever arrived while the gap was in flight goes in after it and never before, so
       // the order stays the server's. A second catch-up may have started meanwhile and is
@@ -83,7 +119,7 @@ export function createChatClient({ url, store, fetchHistory }: ChatClientOptions
   }
 
   function follow(roomId: string): Promise<void> {
-    send({ type: "subscribe", roomId });
+    if (connection === "live") send({ type: "subscribe", roomId });
     return catchUp(roomId);
   }
 
@@ -101,7 +137,7 @@ export function createChatClient({ url, store, fetchHistory }: ChatClientOptions
       case "message:created": {
         const waiting = catchingUp.get(parsed.frame.message.roomId);
         if (waiting) waiting.push(parsed.frame.message);
-        else store.addMessage(parsed.frame.message);
+        else applyLive(parsed.frame.message);
         return;
       }
       case "pong":
@@ -118,6 +154,7 @@ export function createChatClient({ url, store, fetchHistory }: ChatClientOptions
 
     opening.onopen = () => {
       attempt = 0;
+      hasBeenLive = true;
       report("live");
 
       // Subscribed first and caught up second: a message posted between the two arrives on
@@ -132,10 +169,13 @@ export function createChatClient({ url, store, fetchHistory }: ChatClientOptions
     opening.onmessage = (event) => receive(event.data);
 
     opening.onclose = () => {
-      if (!wanted) return;
+      // A browser delivers the close event after `close()` has returned, so a socket the
+      // client has already replaced still gets one: acting on it would drop the connection
+      // that is up and open a second one alongside it.
+      if (!wanted || socket !== opening) return;
 
       socket = undefined;
-      report("reconnecting");
+      report(hasBeenLive ? "reconnecting" : "connecting");
 
       // Full jitter, not a fixed step: without it every client that dropped at the same
       // moment comes back at the same moment, and the recovery is the second outage.
@@ -155,11 +195,9 @@ export function createChatClient({ url, store, fetchHistory }: ChatClientOptions
       open();
     },
 
-    async subscribe(roomId) {
+    subscribe(roomId) {
       following.add(roomId);
-      if (connection !== "live") return;
-
-      await follow(roomId);
+      return follow(roomId);
     },
 
     unsubscribe(roomId) {

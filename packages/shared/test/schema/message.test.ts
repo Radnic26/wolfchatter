@@ -22,6 +22,8 @@ describe("newMessageSchema", () => {
     ["an empty body", { ...posted, body: "" }],
     ["a username over 32 characters", { ...posted, username: "a".repeat(33) }],
     ["a body over 500 characters", { ...posted, body: "a".repeat(501) }],
+    ["a username carrying a null character", { ...posted, username: "ra\u0000du" }],
+    ["a body carrying a null character", { ...posted, body: "hel\u0000lo" }],
     ["a message without an id", { username: "radu", body: "hello" }],
     ["an id that is not a uuid", { ...posted, id: "42" }],
   ])("rejects %s", (_case, input) => {

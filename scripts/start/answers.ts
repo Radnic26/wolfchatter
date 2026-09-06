@@ -14,8 +14,8 @@ export const defaultPort = 3000;
  * A prompt is only worth asking when someone can answer it: `--yes`, a CI runner and a
  * piped stdin all take every default instead, which is what `npm run dev` and CI rely on.
  */
-export function shouldAskQuestions(argv: readonly string[], env: NodeJS.ProcessEnv, isTty: boolean): boolean {
-  if (argv.includes("--yes") || argv.includes("-y")) return false;
+export function shouldAskQuestions(takesDefaults: boolean, env: NodeJS.ProcessEnv, isTty: boolean): boolean {
+  if (takesDefaults) return false;
   if (env.CI !== undefined && env.CI !== "" && env.CI !== "false") return false;
   return isTty;
 }

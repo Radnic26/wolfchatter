@@ -1,5 +1,8 @@
 import { vi } from "vitest";
 
+/** Declared rather than imported, for the reason `test/support/random-uuid.ts` gives. */
+declare const setTimeout: (run: () => void, milliseconds: number) => unknown;
+
 /**
  * The socket the client is written against, with the runtime taken out: a spec decides when
  * it opens, what arrives on it and when it drops, so nothing here waits on a network.
@@ -39,9 +42,14 @@ export function stubWebSocket(): FakeSockets {
       this.sent.push(JSON.parse(data));
     }
 
+    /**
+     * A browser answers `close()` with a closing handshake and delivers the close event
+     * after the call has returned, which is what lets a client open a second socket before
+     * the first one's event arrives. A double that fires it inline hides that entirely.
+     */
     close(): void {
       this.closedByClient = true;
-      this.onclose?.();
+      setTimeout(() => this.onclose?.(), 0);
     }
 
     open(): void {

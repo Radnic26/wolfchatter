@@ -216,6 +216,22 @@ describe("App", () => {
     expect(screen.queryAllByTestId("marker")).toHaveLength(0);
   });
 
+  it("titles the room opened after one that was refused, so a failure ends with that room", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    serve([room({ name: "Chatroom 1" })]);
+
+    renderApp();
+    await screen.findByRole("button", { name: "Chatroom 1" });
+    tapMap();
+    await screen.findByRole("alert");
+
+    await user.click(screen.getByRole("button", { name: "Chatroom 1" }));
+
+    // The heading is also what FR-9 moves the keyboard to, so the refusal would cost both.
+    expect(await screen.findByRole("heading", { name: "Chatroom 1" })).toHaveFocus();
+  });
+
   it("keeps the message that was written in the room it was written in", async () => {
     const user = userEvent.setup();
     const server = serve([], "Chatroom 3");
@@ -346,6 +362,37 @@ describe("App", () => {
     await user.click(await screen.findByRole("button", { name: "Chatroom 1" }));
 
     expect(screen.getByRole("button", { name: "Expand the chatroom" })).toBeInTheDocument();
+  });
+
+  it("leaves the sheet a peek when a pin comes back to a room the map made, because that tap came to look", async () => {
+    const user = userEvent.setup();
+    serve([room({ name: "Chatroom 1", lat: 38.7, lng: -9.1 })], "Chatroom 3");
+
+    renderApp();
+    await screen.findByRole("button", { name: "Chatroom 1" });
+    tapMap();
+    await screen.findByRole("heading", { name: "Chatroom 3" });
+
+    await user.click(screen.getByRole("button", { name: "Chatroom 1" }));
+    await user.click(screen.getByRole("button", { name: "Chatroom 3" }));
+
+    expect(screen.getByRole("button", { name: "Expand the chatroom" })).toBeInTheDocument();
+  });
+
+  it("leaves the sheet a peek when the back button returns to a room that was closed", async () => {
+    const user = userEvent.setup();
+    serve([], "Chatroom 3");
+
+    renderApp();
+    await screen.findByText("Click on the map to start a chat");
+    tapMap();
+    await screen.findByRole("heading", { name: "Chatroom 3" });
+
+    await user.keyboard("{Escape}");
+    await screen.findByText("Click on the map to start a chat");
+    window.history.back();
+
+    expect(await screen.findByRole("button", { name: "Expand the chatroom" })).toBeInTheDocument();
   });
 
   it("says so, and keeps the map, when the stored rooms cannot be loaded", async () => {

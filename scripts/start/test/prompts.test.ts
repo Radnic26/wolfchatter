@@ -4,6 +4,7 @@ import {
   renderReady,
   renderRunModeQuestion,
   renderTileSourceQuestion,
+  renderUsage,
 } from "../prompts.ts";
 import { offeredRunModes } from "../run-mode.ts";
 import { offeredTileSources } from "../tile-source.ts";
@@ -53,5 +54,20 @@ describe("renderReady", () => {
 
   it("warns that the production image does not pick up edits", () => {
     expect(renderReady("http://localhost:3000", false)).toContain("need a rebuild");
+  });
+});
+
+describe("renderUsage", () => {
+  it("documents every flag there is, so --help is the whole surface", () => {
+    const usage = renderUsage();
+
+    expect(usage).toContain("--yes");
+    expect(usage).toContain("-y");
+    expect(usage).toContain("--reconfigure");
+    expect(usage).toContain("--help");
+  });
+
+  it("names the command a reader typed to get here", () => {
+    expect(renderUsage()).toContain("./start-wolfchatter");
   });
 });

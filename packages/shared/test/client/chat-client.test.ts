@@ -5,7 +5,7 @@ import {
   createChatClient,
   createChatStore,
 } from "../../src/client/index.ts";
-import type { Message, Room } from "../../src/schema/index.ts";
+import { MESSAGE_PAGE_SIZE, type Message, type Room } from "../../src/schema/index.ts";
 import { randomUuid } from "../support/random-uuid.ts";
 import { type FakeSockets, stubWebSocket } from "../support/socket.ts";
 
@@ -95,20 +95,91 @@ describe("createChatClient", () => {
     expect(store.getSnapshot().messagesByRoom.get(roomId)).toEqual([newest]);
   });
 
-  it("asks only for the gap after the last message it already shows", async () => {
+  it("asks only for the gap after the last message the server sent it", async () => {
     const roomId = randomUuid();
     const older = message(roomId, { body: "first" });
     const newest = message(roomId, { body: "second" });
     const missed = message(roomId, { body: "third" });
-    store.setMessages(roomId, [older, newest]);
-    answer = async () => [missed];
+    answer = async (_roomId, after) => (after === undefined ? [older, newest] : [missed]);
+    client.connect();
+    sockets.newest().open();
+    await client.subscribe(roomId);
+
+    await client.subscribe(roomId);
+
+    expect(asked.at(-1)).toEqual({ roomId, after: newest.id });
+    expect(store.getSnapshot().messagesByRoom.get(roomId)).toEqual([older, newest, missed]);
+  });
+
+  it("asks after the last message the server sent, not the last one this browser posted", async () => {
+    const roomId = randomUuid();
+    const theirs = message(roomId, { body: "sent to everyone" });
+    answer = async (_roomId, after) => (after === undefined ? [theirs] : []);
+    client.connect();
+    sockets.newest().open();
+    await client.subscribe(roomId);
+
+    // A post goes over HTTP whatever the socket is doing, so it reaches the room the way
+    // any accepted message does: at the end of what this browser shows.
+    store.addMessage(message(roomId, { body: "posted while the socket was down" }));
+    sockets.newest().drop();
+    vi.advanceTimersByTime(longestPossibleRetry);
+    sockets.newest().open();
+    await vi.waitFor(() => expect(asked).toHaveLength(2));
+
+    expect(asked.at(-1)).toEqual({ roomId, after: theirs.id });
+  });
+
+  it("asks after the last message the socket delivered", async () => {
+    const roomId = randomUuid();
+    const live = message(roomId);
+    client.connect();
+    sockets.newest().open();
+    await client.subscribe(roomId);
+
+    sockets.newest().deliver({ type: "message:created", message: live });
+    sockets.newest().drop();
+    vi.advanceTimersByTime(longestPossibleRetry);
+    sockets.newest().open();
+    await vi.waitFor(() => expect(asked).toHaveLength(2));
+
+    expect(asked.at(-1)).toEqual({ roomId, after: live.id });
+  });
+
+  it("reads page after page while a gap comes back full, so a gap longer than one is whole", async () => {
+    const roomId = randomUuid();
+    const read = message(roomId, { body: "read on the way in" });
+    const gapHead = Array.from({ length: MESSAGE_PAGE_SIZE }, () => message(roomId));
+    const gapTail = [message(roomId, { body: "the tail of the gap" })];
+    answer = async (_roomId, after) => {
+      if (after === undefined) return [read];
+      return after === read.id ? gapHead : gapTail;
+    };
+    client.connect();
+    sockets.newest().open();
+    await client.subscribe(roomId);
+
+    await client.subscribe(roomId);
+
+    expect(asked).toEqual([
+      { roomId, after: undefined },
+      { roomId, after: read.id },
+      { roomId, after: gapHead.at(-1)?.id },
+    ]);
+    expect(store.getSnapshot().messagesByRoom.get(roomId)).toEqual([read, ...gapHead, ...gapTail]);
+  });
+
+  it("asks nothing more after a full page read cold, because that page is the newest one", async () => {
+    const roomId = randomUuid();
+    const newestPage = Array.from({ length: MESSAGE_PAGE_SIZE }, () => message(roomId));
+    answer = async () => newestPage;
     client.connect();
     sockets.newest().open();
 
     await client.subscribe(roomId);
 
-    expect(asked).toEqual([{ roomId, after: newest.id }]);
-    expect(store.getSnapshot().messagesByRoom.get(roomId)).toEqual([older, newest, missed]);
+    expect(asked).toEqual([{ roomId, after: undefined }]);
+    expect(store.getSnapshot().messagesByRoom.get(roomId)).toEqual(newestPage);
   });
 
   it("takes a page in as one change, so a room with history is drawn once", async () => {
@@ -129,12 +200,13 @@ describe("createChatClient", () => {
     const held = message(roomId, { body: "first" });
     const missed = message(roomId, { body: "second" });
     const live = message(roomId, { body: "third" });
-    store.setMessages(roomId, [held]);
+    answer = async () => [held];
+    client.connect();
+    sockets.newest().open();
+    await client.subscribe(roomId);
 
     let hand: (page: readonly Message[]) => void = () => undefined;
     answer = () => new Promise<readonly Message[]>((resolve) => (hand = resolve));
-    client.connect();
-    sockets.newest().open();
     const subscribing = client.subscribe(roomId);
 
     sockets.newest().deliver({ type: "message:created", message: live });
@@ -147,6 +219,24 @@ describe("createChatClient", () => {
         .messagesByRoom.get(roomId)
         ?.map((held) => held.body),
     ).toEqual(["first", "second", "third"]);
+  });
+
+  it("drops a page that came back after a newer catch-up started, so a room never goes back", async () => {
+    const roomId = randomUuid();
+    const late = message(roomId, { body: "the answer to the first ask" });
+    const current = message(roomId, { body: "the answer to the second" });
+    const hands: ((page: readonly Message[]) => void)[] = [];
+    answer = () => new Promise<readonly Message[]>((resolve) => hands.push(resolve));
+    client.connect();
+    sockets.newest().open();
+
+    const first = client.subscribe(roomId);
+    const second = client.subscribe(roomId);
+    hands[1]?.([current]);
+    hands[0]?.([late]);
+    await Promise.all([first, second]);
+
+    expect(store.getSnapshot().messagesByRoom.get(roomId)).toEqual([current]);
   });
 
   it("keeps a live message that arrives with no gap in flight", async () => {
@@ -187,7 +277,7 @@ describe("createChatClient", () => {
   it("follows a room again after a reconnect, and asks for what it missed", async () => {
     const roomId = randomUuid();
     const held = message(roomId);
-    store.setMessages(roomId, [held]);
+    answer = async (_roomId, after) => (after === undefined ? [held] : []);
     client.connect();
     sockets.newest().open();
     await client.subscribe(roomId);
@@ -216,6 +306,14 @@ describe("createChatClient", () => {
     await vi.waitFor(() => expect(warned).toHaveBeenCalled());
 
     expect(store.getSnapshot().connection).toBe("live");
+  });
+
+  it("says it is still connecting when a first attempt never came up", () => {
+    client.connect();
+
+    sockets.newest().drop();
+
+    expect(store.getSnapshot().connection).toBe("connecting");
   });
 
   it("says it is reconnecting the moment the connection is gone", () => {
@@ -292,6 +390,29 @@ describe("createChatClient", () => {
     expect(sockets.newest().closedByClient).toBe(true);
   });
 
+  it("does not reconnect when the close is the one it asked for", () => {
+    client.connect();
+    sockets.newest().open();
+
+    client.close();
+    vi.advanceTimersByTime(longestPossibleRetry);
+
+    expect(sockets.opened).toHaveLength(1);
+  });
+
+  it("ignores the close of a socket it has already replaced", () => {
+    client.connect();
+    sockets.newest().open();
+    client.close();
+
+    client.connect();
+    sockets.newest().open();
+    vi.advanceTimersByTime(longestPossibleRetry);
+
+    expect(store.getSnapshot().connection).toBe("live");
+    expect(sockets.opened).toHaveLength(2);
+  });
+
   it("stops following a room it has unsubscribed from", async () => {
     const roomId = randomUuid();
     client.connect();
@@ -310,15 +431,26 @@ describe("createChatClient", () => {
     expect(sockets.newest().sent).toEqual([]);
   });
 
-  it("takes a subscription while the connection is down and honours it when it is back", async () => {
+  it("reads a room's history while the connection is down, because HTTP holds all of it", async () => {
     const roomId = randomUuid();
+    const stored = message(roomId);
+    answer = async () => [stored];
     client.connect();
 
     await client.subscribe(roomId);
-    expect(asked).toEqual([]);
+
+    expect(asked).toEqual([{ roomId, after: undefined }]);
+    expect(store.getSnapshot().messagesByRoom.get(roomId)).toEqual([stored]);
+    expect(sockets.newest().sent).toEqual([]);
+  });
+
+  it("takes a subscription while the connection is down and follows the room when it is back", async () => {
+    const roomId = randomUuid();
+    client.connect();
+    await client.subscribe(roomId);
 
     sockets.newest().open();
-    await vi.waitFor(() => expect(asked).toHaveLength(1));
+    await vi.waitFor(() => expect(asked).toHaveLength(2));
 
     expect(sockets.newest().sent).toEqual([{ type: "subscribe", roomId }]);
   });

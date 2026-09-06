@@ -36,6 +36,14 @@ export default defineConfig({
         },
       },
       {
+        test: {
+          name: "ai",
+          root: "scripts/ai",
+          environment: "node",
+          include: ["test/**/*.test.ts"],
+        },
+      },
+      {
         plugins: [react()],
         test: {
           name: "web",

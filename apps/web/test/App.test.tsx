@@ -306,6 +306,38 @@ describe("App", () => {
     expect(screen.getAllByText("said from the other browser")).toHaveLength(2);
   });
 
+  it("leaves the marker layer alone while messages arrive, which is what NFR-1 asks", async () => {
+    const user = userEvent.setup();
+    const stored = room({ name: "Chatroom 1" });
+    serve([stored]);
+    renderApp();
+    await user.click(await screen.findByRole("button", { name: "Chatroom 1" }));
+    await waitFor(() => expect(sockets.sent).toContainEqual({ type: "subscribe", roomId: stored.id }));
+
+    // Everything before this is the first load and the room opening; only what the messages
+    // themselves cost is counted. The layer is memoised, so the count must not move — which
+    // it does the moment a handler reaching it is rebuilt on every render of the app.
+    const drawnBeforeTheMessages = leafletTestbed.markerRenders;
+
+    for (const body of ["one", "two", "three"]) {
+      await act(async () => {
+        sockets.deliver({
+          type: "message:created",
+          message: {
+            id: randomUUID(),
+            roomId: stored.id,
+            username: "bogdan",
+            body,
+            createdAt: "2026-09-05T10:00:00.000Z",
+          },
+        });
+      });
+    }
+
+    expect(screen.getAllByText("three").length).toBeGreaterThan(0);
+    expect(leafletTestbed.markerRenders).toBe(drawnBeforeTheMessages);
+  });
+
   it("leaves no socket open behind a view that is gone", async () => {
     serve([]);
     const { unmount } = render(

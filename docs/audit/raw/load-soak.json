@@ -1,0 +1,42 @@
+{
+  "label": "soak-10x",
+  "at": "2026-09-06T10:45:37.667Z",
+  "plan": {
+    "sockets": 500,
+    "rooms": 50,
+    "messagesPerSecond": 50,
+    "seconds": 600,
+    "observers": 25,
+    "clientHeader": "X-Forwarded-For"
+  },
+  "sockets": {
+    "opened": 500,
+    "refused": 0,
+    "closedEarly": 0,
+    "errors": 0
+  },
+  "writes": {
+    "attempted": 30000,
+    "accepted": 30000,
+    "refusals": {},
+    "failures": 0,
+    "achievedPerSecond": 49.75
+  },
+  "deliveries": {
+    "observed": 300000,
+    "expected": 300000,
+    "subscribersPerRoom": 10
+  },
+  "latencyMilliseconds": {
+    "count": 15000,
+    "p50": 4.835459000023548,
+    "p95": 6.380291000008583,
+    "p99": 10.918584000028204,
+    "max": 997.0590830000001
+  },
+  "memory": {
+    "before": "65.91MiB / 7.746GiB",
+    "after": "193.7MiB / 7.746GiB"
+  },
+  "errorRate": 0
+}

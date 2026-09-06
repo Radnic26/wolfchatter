@@ -1,4 +1,5 @@
 import { type Context, type ErrorHandler, Hono, type MiddlewareHandler } from "hono";
+import { compress } from "hono/compress";
 import { HTTPException } from "hono/http-exception";
 import { secureHeaders } from "hono/secure-headers";
 import type { Queryable } from "./db/db.ts";
@@ -23,15 +24,31 @@ const contentSecurityPolicy = {
   defaultSrc: ["'self'"],
   connectSrc: ["'self'"],
   imgSrc: ["'self'", "data:", ...tileServers],
+  scriptSrc: ["'self'"],
   styleSrc: ["'self'"],
+  // Neither of these falls back to `default-src`, so omitting them leaves an injected
+  // `<base>` free to re-point every relative URL and a form free to post anywhere.
+  baseUri: ["'self'"],
+  formAction: ["'self'"],
   frameAncestors: ["'none'"],
 };
 
 /** A year, which is the shortest max-age the HSTS preload lists accept. */
 const strictTransportSecurity = "max-age=31536000; includeSubDomains";
 
-const headersOverTls = secureHeaders({ contentSecurityPolicy, strictTransportSecurity });
-const headersOverPlainHttp = secureHeaders({ contentSecurityPolicy, strictTransportSecurity: false });
+/**
+ * The tile server authenticates by `Referer`, so the default of `no-referrer` answers every
+ * tile with 401 and leaves the map blank. This sends the origin the tiles are keyed to and
+ * still never sends the path, which is the part that would say which room is open.
+ */
+const referrerPolicy = "strict-origin-when-cross-origin";
+
+/** The same answer as `frame-ancestors 'none'`, for a browser too old to read the policy. */
+const xFrameOptions = "DENY";
+
+const policy = { contentSecurityPolicy, referrerPolicy, xFrameOptions };
+const headersOverTls = secureHeaders({ ...policy, strictTransportSecurity });
+const headersOverPlainHttp = secureHeaders({ ...policy, strictTransportSecurity: false });
 
 /**
  * HSTS pins a host to https for a year, so sending it from a plain http origin would take
@@ -90,6 +107,10 @@ export function createApp({ db, broadcaster, allowedOrigins, addressOf, now }: A
       // Scoped to the API namespace rather than the instance, because the instance also
       // carries `/ws`. The process mounts the same headers over the front end it serves.
       .use("/api/*", secureResponseHeaders)
+      // Scoped to the API rather than the instance for the same reason as the headers: this
+      // instance also carries `/ws`, and an upgrade does not survive a middleware that
+      // writes one. The room list is the response worth this — the whole map in one body.
+      .use("/api/*", compress())
       .use("/api/*", refuseForeignWrites(allowedOrigins))
       .get("/api/health", (c) => c.json({ status: "ok" as const }))
       .route("/api", createRoomRoutes({ db, broadcaster, limitWrites }))

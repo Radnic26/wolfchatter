@@ -14,6 +14,7 @@ The scaffold (delivery-plan PR 3) is what makes these true; before it lands they
 - `./start-wolfchatter` — first-run wizard where Enter accepts every default; `--yes` skips the questions
 - `docker compose up --build` — the production image against a real PostgreSQL
 - `./scripts/review.sh <round>` — headless self-review, output validated against `scripts/review-schema.json`
+- `./scripts/audit.sh <round> [security|load|performance|all]` — the same for the deploy-readiness audit, against `scripts/audit-schema.json`, and it refuses to run unless the app is already up. `node scripts/audit/main.ts` sends every NFR-2 input class at it; `node scripts/load/run.ts` is the load and soak run. Both take `--help`, add no dependency, and are instruments rather than shipped code, so they sit outside the coverage gate exactly as `review.sh` does
 - Schema changes are new numbered files in `apps/server/src/db/migrations/`, applied at boot; never edit one that has already run
 
 ## Layout

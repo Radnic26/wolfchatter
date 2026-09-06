@@ -28,6 +28,11 @@ export const leafletTestbed = {
   container: document.createElement("div"),
   handlers: {} as MapHandlers,
   visibleBounds: true,
+  /**
+   * One count per pin per render of the marker layer. NFR-1 says message traffic never
+   * re-renders that layer, and a count that does not move is how a spec can say so.
+   */
+  markerRenders: 0,
   flyTo: vi.fn<(position: [number, number], zoom: number) => void>(),
   setView: vi.fn<(position: [number, number], zoom: number) => void>(),
 
@@ -37,6 +42,7 @@ export const leafletTestbed = {
     document.body.append(leafletTestbed.container);
     leafletTestbed.handlers = {};
     leafletTestbed.visibleBounds = true;
+    leafletTestbed.markerRenders = 0;
     leafletTestbed.flyTo.mockClear();
     leafletTestbed.setView.mockClear();
   },
@@ -102,6 +108,7 @@ export function mockReactLeaflet() {
     ),
 
     Marker: ({ position, icon, zIndexOffset, title, autoPanOnFocus, eventHandlers }: MarkerProps) => {
+      leafletTestbed.markerRenders += 1;
       // Leaflet writes `title` onto the icon element when it builds it, and react-leaflet
       // updates only position, icon, z-index, opacity and draggable afterwards. So a name
       // that arrives after mount never reaches the real map, and a double that renders the

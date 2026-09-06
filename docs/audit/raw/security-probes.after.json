@@ -1,0 +1,222 @@
+{
+  "target": "http://localhost:3000",
+  "roomId": "f7a523bb-e93f-4586-8a0c-eea6e4b40309",
+  "verdicts": [
+    {
+      "probe": "security-headers-api",
+      "control": "CSP, nosniff, frame-ancestors",
+      "expectation": "the API namespace carries the policy NFR-2 names",
+      "held": true,
+      "observed": "content-security-policy: default-src 'self'; connect-src 'self'; img-src 'self' data: https://tiles.stadiamaps.com https://tile.openstreetmap.org; script-src 'self'; style-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none' · x-content-type-options: nosniff · strict-transport-security: (absent) · x-frame-options: DENY",
+      "milliseconds": 4
+    },
+    {
+      "probe": "security-headers-shell",
+      "control": "CSP, nosniff, frame-ancestors",
+      "expectation": "the page a browser actually loads carries the same policy as the API",
+      "held": true,
+      "observed": "content-security-policy: default-src 'self'; connect-src 'self'; img-src 'self' data: https://tiles.stadiamaps.com https://tile.openstreetmap.org; script-src 'self'; style-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none' · x-content-type-options: nosniff · strict-transport-security: (absent) · x-frame-options: DENY",
+      "milliseconds": 2
+    },
+    {
+      "probe": "hsts-only-over-tls",
+      "control": "HSTS behind TLS",
+      "expectation": "no HSTS over plain http, which would pin localhost for a year",
+      "held": true,
+      "observed": "over http: → strict-transport-security: (absent)",
+      "milliseconds": 3
+    },
+    {
+      "probe": "cache-policy",
+      "control": "immutable assets, revalidated shell",
+      "expectation": "a fingerprinted asset is immutable for a year and the shell is not",
+      "held": true,
+      "observed": "/assets/index-DkdzPgR6.js → public, max-age=31536000, immutable; / → no-cache",
+      "milliseconds": 5
+    },
+    {
+      "probe": "text-compression",
+      "control": "NFR-1: initial JS ≤ 250 KB gzipped",
+      "expectation": "the bundle is sent compressed, or the budget is a number no browser sees",
+      "held": true,
+      "observed": "/assets/index-DkdzPgR6.js → content-encoding gzip, 288221 B once decoded",
+      "milliseconds": 9
+    },
+    {
+      "probe": "server-banner",
+      "control": "generic error bodies",
+      "expectation": "no header names the runtime or its version",
+      "held": true,
+      "observed": "server: (absent) · x-powered-by: (absent)",
+      "milliseconds": 2
+    },
+    {
+      "probe": "invalid-json",
+      "control": "every input Zod-validated",
+      "expectation": "400 with a generic body, never a parser message",
+      "held": true,
+      "observed": "400 {\"error\":{\"code\":\"invalid_request\",\"requestId\":\"138b1a58-cd11-437e-a656-69027a554c6d\"}}",
+      "milliseconds": 2
+    },
+    {
+      "probe": "oversized-body",
+      "control": "16 KiB payload cap",
+      "expectation": "413 before the body is validated",
+      "held": true,
+      "observed": "413 {\"error\":{\"code\":\"payload_too_large\",\"requestId\":\"e41e491d-261d-432f-8a8b-a0c9d5414273\"}}",
+      "milliseconds": 2
+    },
+    {
+      "probe": "absurd-coordinates",
+      "control": "every input Zod-validated",
+      "expectation": "400 for every point off the globe, and for a coordinate that is not a number",
+      "held": true,
+      "observed": "{\"lat\":91,\"lng\":0} → 400 generic; {\"lat\":0,\"lng\":181} → 400 generic; {\"lat\":-1e+308,\"lng\":0} → 400 generic; {\"lat\":\"0\",\"lng\":0} → 400 generic; {\"lat\":null,\"lng\":0} → 400 generic",
+      "milliseconds": 15
+    },
+    {
+      "probe": "unknown-room",
+      "control": "every input Zod-validated",
+      "expectation": "404 on reading and on posting to a room that does not exist",
+      "held": true,
+      "observed": "GET 404, POST 404",
+      "milliseconds": 6
+    },
+    {
+      "probe": "malformed-room-id",
+      "control": "every input Zod-validated",
+      "expectation": "400 for a path parameter that is not a uuid, a traversal attempt included",
+      "held": true,
+      "observed": "not-a-uuid → 400; ../../etc/passwd → 400; 1 OR 1=1 → 400; %00 → 400",
+      "milliseconds": 9
+    },
+    {
+      "probe": "sql-injection",
+      "control": "parameterised SQL only",
+      "expectation": "the payload is stored as text and the tables are still there",
+      "held": true,
+      "observed": "stored \"'; DROP TABLE messages; --\", list answered 200 with 1 row(s)",
+      "milliseconds": 10
+    },
+    {
+      "probe": "html-injection",
+      "control": "generic error bodies · CSP",
+      "expectation": "the payload comes back as JSON text, never as a document a browser would run",
+      "held": true,
+      "observed": "content-type application/json, x-content-type-options nosniff, stored verbatim true",
+      "milliseconds": 4
+    },
+    {
+      "probe": "null-character",
+      "control": "every input Zod-validated",
+      "expectation": "400, because the driver answers a NUL inside a text value with a 500",
+      "held": true,
+      "observed": "400 {\"error\":{\"code\":\"invalid_request\",\"requestId\":\"0a24f853-2847-4de6-b421-66a1adb930be\"}}",
+      "milliseconds": 3
+    },
+    {
+      "probe": "unknown-field",
+      "control": "every input Zod-validated",
+      "expectation": "400: the write schemas are strict, so an extra field is refused rather than ignored",
+      "held": true,
+      "observed": "400 {\"error\":{\"code\":\"invalid_request\",\"requestId\":\"cd6712b4-c576-418b-b9fd-b0ab00d3abb3\"}}",
+      "milliseconds": 2
+    },
+    {
+      "probe": "oversized-query-limit",
+      "control": "every input Zod-validated",
+      "expectation": "400 rather than a page the caller sized",
+      "held": true,
+      "observed": "400 {\"error\":{\"code\":\"invalid_request\",\"requestId\":\"842bf559-b66d-4317-8d99-c68503498c66\"}}",
+      "milliseconds": 3
+    },
+    {
+      "probe": "forbidden-origin-http",
+      "control": "Origin allowlist on HTTP",
+      "expectation": "403 for a write from an origin that is not on the list",
+      "held": true,
+      "observed": "403 {\"error\":{\"code\":\"invalid_request\",\"requestId\":\"af9ee444-1764-40b7-81ee-fecb209e17c7\"}}",
+      "milliseconds": 2
+    },
+    {
+      "probe": "unmatched-api-path",
+      "control": "generic error bodies",
+      "expectation": "404 as JSON, never the single-page shell with a 200",
+      "held": true,
+      "observed": "404 application/json {\"error\":{\"code\":\"not_found\",\"requestId\":\"86cbf5f5-1750-4d31-a488-91c183a9541b\"}}",
+      "milliseconds": 2
+    },
+    {
+      "probe": "allowed-origin-ws",
+      "control": "Origin allowlist on the upgrade",
+      "expectation": "the app's own origin is upgraded, so the refusals below mean the allowlist and not an outage",
+      "held": true,
+      "observed": "origin http://localhost:3000 → 101 Switching Protocols",
+      "milliseconds": 4
+    },
+    {
+      "probe": "forbidden-origin-ws",
+      "control": "Origin allowlist on the upgrade",
+      "expectation": "an origin that is not on the list is refused before the upgrade",
+      "held": true,
+      "observed": "origin https://evil.example → 403 Forbidden",
+      "milliseconds": 2
+    },
+    {
+      "probe": "missing-origin-ws",
+      "control": "Origin allowlist on the upgrade",
+      "expectation": "an upgrade carrying no Origin is refused, because a browser always sends one",
+      "held": true,
+      "observed": "origin (absent) → 403 Forbidden",
+      "milliseconds": 1
+    },
+    {
+      "probe": "binary-frame",
+      "control": "every WS frame Zod-validated",
+      "expectation": "a binary frame is answered with an error, never parsed",
+      "held": true,
+      "observed": "{\"type\":\"error\",\"code\":\"invalid_frame\"}",
+      "milliseconds": 2
+    },
+    {
+      "probe": "malformed-frame",
+      "control": "every WS frame Zod-validated",
+      "expectation": "text that is not a known frame is answered with an error and does not close the process",
+      "held": true,
+      "observed": "{\"type\":\"error\",\"code\":\"invalid_frame\"}",
+      "milliseconds": 2
+    },
+    {
+      "probe": "frame-flood",
+      "control": "per-connection rate limit",
+      "expectation": "a burst past the frame allowance is refused rather than served",
+      "held": true,
+      "observed": "refused after a burst: {\"type\":\"error\",\"code\":\"rate_limited\"}",
+      "milliseconds": 3
+    },
+    {
+      "probe": "connection-flood",
+      "control": "DoS surface: connection flood",
+      "expectation": "many sockets opened at once are served or refused, and the process still answers afterwards",
+      "held": true,
+      "observed": "300/300 sockets opened; /api/health then answered 200",
+      "milliseconds": 102
+    },
+    {
+      "probe": "slow-consumer",
+      "control": "DoS surface: a reader that never drains",
+      "expectation": "the process keeps serving everyone else, and the volume one stalled reader holds is recorded",
+      "held": true,
+      "observed": "still open after 20000 messages; up to 12.9 MiB queued for one stalled reader; /api/health then answered 200",
+      "milliseconds": 12630
+    },
+    {
+      "probe": "write-rate-limit",
+      "control": "per-IP rate limit",
+      "expectation": "a burst from one caller is refused with 429, and the refusal names nobody",
+      "held": true,
+      "observed": "refused at write 1 with 429; body {\"error\":{\"code\":\"rate_limited\",\"requestId\":\"e32fb2b1-5a7d-4b53-bcb5-2435941c0989\"}}",
+      "milliseconds": 1
+    }
+  ]
+}

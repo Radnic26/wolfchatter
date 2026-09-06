@@ -1,0 +1,42 @@
+{
+  "label": "sockets-8000",
+  "at": "2026-09-06T10:34:56.078Z",
+  "plan": {
+    "sockets": 8000,
+    "rooms": 200,
+    "messagesPerSecond": 400,
+    "seconds": 40,
+    "observers": 25,
+    "clientHeader": "X-Forwarded-For"
+  },
+  "sockets": {
+    "opened": 8000,
+    "refused": 0,
+    "closedEarly": 0,
+    "errors": 0
+  },
+  "writes": {
+    "attempted": 16000,
+    "accepted": 16000,
+    "refusals": {},
+    "failures": 0,
+    "achievedPerSecond": 372.09
+  },
+  "deliveries": {
+    "observed": 640000,
+    "expected": 640000,
+    "subscribersPerRoom": 40
+  },
+  "latencyMilliseconds": {
+    "count": 2000,
+    "p50": 2.2555839999986347,
+    "p95": 3.914291000000958,
+    "p99": 12.6081250000002,
+    "max": 50.837125000000015
+  },
+  "memory": {
+    "before": "254.8MiB / 7.746GiB",
+    "after": "389.5MiB / 7.746GiB"
+  },
+  "errorRate": 0
+}

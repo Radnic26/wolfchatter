@@ -174,6 +174,26 @@ introduce, which the 100% gate requires, not to reproduce a defect that was ther
 | Test files | 55 | 58 |
 | Coverage | 100% | 100% |
 
+## The audit's findings, so this table is the whole record
+
+The deploy-readiness audit ran next, against the running production image rather than against
+the source, and raised nine more. They are listed here in full in
+[docs/audit/README.md](../audit/README.md), with the measurement behind each one; this table
+carries them so that "what was repaired, what was not and why" has one address. Source
+`audit` in the last column.
+
+| id | sev | where | the defect | reproduction | decision |
+|---|---|---|---|---|---|
+| A1-1 | high | `apps/server/src/app.ts:44` | `no-referrer`, the framework's default for the headers round 10 added, strips the `Referer` the tile server authenticates by, so the map is blank in the production image | Lighthouse against the container: 25 of 25 tile requests answered 401; the same tile fetched with a `Referer` answers 200 | audit → approved → fixed |
+| A1-7 | high | `apps/server/src/index.ts:64`, `app.ts:113` | Nothing was compressed, so a browser downloaded 451 KB of JavaScript for a bundle NFR-1 budgets at 137 KB gzipped | `curl -sI -H 'Accept-Encoding: gzip' /assets/index-*.js` carries no `content-encoding` | audit → approved → fixed |
+| A1-2 | medium | `apps/server/src/ws/hub.ts:19` | The queue bound reads what this process holds, which the kernel's send buffer fills before; the 512 KiB the code named was never the ceiling | a paused subscriber received 5,000 of 5,000 frames, 3.3 MiB, with no drop | audit → approved → **the comment was wrong**, not the behaviour |
+| A1-3 | medium | `docker-compose.yml:36` | `.env.example` documents `TRUSTED_CLIENT_HEADER` and compose never forwarded it, so finding 02's repair was unreachable in the deployment artefact | set it in the env file, then read it inside the container: `UNSET` | audit → approved → fixed |
+| A1-8 | medium | `apps/web/src/App.tsx:43` | A handler rebuilt on every render kept the marker layer's `memo` from ever holding, against NFR-1 and the layer's own comment | 5 arriving messages produced 5 layer renders; the committed test reads `expected 12 to be 6` without the fix | audit → approved → fixed |
+| A1-4 | low | `apps/server/src/app.ts:47` | `X-Frame-Options: SAMEORIGIN` was sent beside `frame-ancestors 'none'` | `curl -sI /` carries both, disagreeing | audit → approved → fixed |
+| A1-5 | low | `apps/server/src/app.ts:31` | No `base-uri` and no `form-action`, neither of which falls back to `default-src` | `curl -sI /`; Chrome also logged that `script-src` was not set | audit → approved → fixed |
+| A1-6 | low | `Dockerfile:31` | Four of the image's six high-severity advisories are npm's own vendored dependencies, which the runtime never runs and `npm audit` cannot see | `trivy image` on the runtime image: 6 HIGH, 2 after removing npm | audit → approved → fixed |
+| A1-9 | low | — | `/robots.txt` is answered by the single-page shell with a 200 | Lighthouse SEO 92, 27 parse errors | audit → **declined — out of scope, frozen on 5 September** |
+
 ## Reproducing this round
 
 ```sh

@@ -1,0 +1,42 @@
+{
+  "label": "1x",
+  "at": "2026-09-06T10:27:47.371Z",
+  "plan": {
+    "sockets": 50,
+    "rooms": 5,
+    "messagesPerSecond": 5,
+    "seconds": 60,
+    "observers": 25,
+    "clientHeader": "X-Forwarded-For"
+  },
+  "sockets": {
+    "opened": 50,
+    "refused": 0,
+    "closedEarly": 0,
+    "errors": 0
+  },
+  "writes": {
+    "attempted": 300,
+    "accepted": 300,
+    "refusals": {},
+    "failures": 0,
+    "achievedPerSecond": 4.78
+  },
+  "deliveries": {
+    "observed": 3000,
+    "expected": 3000,
+    "subscribersPerRoom": 10
+  },
+  "latencyMilliseconds": {
+    "count": 1500,
+    "p50": 4.893708000003244,
+    "p95": 6.595709000001079,
+    "p99": 8.715457999999671,
+    "max": 10.424833000000035
+  },
+  "memory": {
+    "before": "52MiB / 7.746GiB",
+    "after": "56.55MiB / 7.746GiB"
+  },
+  "errorRate": 0
+}

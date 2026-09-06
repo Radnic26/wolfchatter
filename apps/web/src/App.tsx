@@ -1,6 +1,6 @@
 import { createChatClient, createChatStore } from "@wolfchatter/shared/client";
 import type { LatLng } from "leaflet";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { AppHeader } from "./components/app-header.tsx";
 import { browserUsernameStorage } from "./lib/browser-username-storage.ts";
 import { randomUuid } from "./lib/random-uuid.ts";
@@ -40,27 +40,30 @@ export function App() {
    * the budget NFR-1 sets, and a tap on the map is also the one gesture that says "I came
    * here to write": below 768 px it opens the sheet, where a tap on a marker leaves the peek.
    */
-  async function openRoom(point: LatLng) {
-    const opening = { id: randomUuid(), lat: point.lat, lng: point.lng };
+  const openRoom = useCallback(
+    async (point: LatLng) => {
+      const opening = { id: randomUuid(), lat: point.lat, lng: point.lng };
 
-    setFailedToOpen(false);
-    setRoomToWriteInId(opening.id);
-    selectRoom(opening.id);
+      setFailedToOpen(false);
+      setRoomToWriteInId(opening.id);
+      selectRoom(opening.id);
 
-    try {
-      await openRoomAt(store, opening);
-    } catch (failure) {
-      console.error("The chatroom could not be opened", failure);
-      setFailedToOpen(true);
-    }
-  }
+      try {
+        await openRoomAt(store, opening);
+      } catch (failure) {
+        console.error("The chatroom could not be opened", failure);
+        setFailedToOpen(true);
+      }
+    },
+    [store],
+  );
 
   /** A pin asks "what is this?", so the sheet stays a peek and any earlier failure goes. */
-  function showRoom(roomId: string) {
+  const showRoom = useCallback((roomId: string) => {
     setFailedToOpen(false);
     setRoomToWriteInId(null);
     selectRoom(roomId);
-  }
+  }, []);
 
   /** The room is let go of, and the keyboard goes back to the map the pins are on. */
   function closeRoom() {

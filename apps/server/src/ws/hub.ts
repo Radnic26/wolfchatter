@@ -5,11 +5,18 @@ import { createTokenBucket, type RateLimit, type TokenBucket } from "../lib/toke
 import type { Broadcaster } from "./broadcaster.ts";
 
 /**
- * A reader the network cannot keep up with is a queue that grows for as long as the room
- * is busy. Past this much waiting to go out the connection is dropped; the client comes
- * back and asks for the gap, which is the recovery it already has for a lost connection.
+ * A reader the network cannot keep up with is a queue that grows for as long as the room is
+ * busy. Past this much still held here the connection is dropped; the client comes back and
+ * asks for the gap, which is the recovery it already has for a lost connection.
+ *
+ * This counts only what this process still holds, which begins to grow after the kernel's
+ * own send buffer is full — so the ceiling for a reader that has stopped draining is that
+ * buffer plus this, not this alone. The audit measured a subscriber that never read holding
+ * 3.3 MiB without the bound being reached. Making the number below the whole truth would
+ * take either an acknowledgement in the protocol or a deadline on a flush, and no
+ * requirement asks for either; a peer that has genuinely gone is the heartbeat's job.
  */
-const maximumQueuedBytes = 512 * 1024;
+const maximumUnflushedBytes = 512 * 1024;
 
 /**
  * The socket carries subscriptions and a heartbeat, nothing that writes, so a client has
@@ -60,7 +67,7 @@ export function createChatHub({ now }: ChatHubOptions): ChatHub {
   }
 
   function sendText(connection: Connection, text: string): void {
-    if (connection.socket.bufferedAmount > maximumQueuedBytes) {
+    if (connection.socket.bufferedAmount > maximumUnflushedBytes) {
       drop(connection);
       return;
     }

@@ -30,6 +30,11 @@ services:
       PORT: ${PORT:-3000}
       DATABASE_URL: ${DATABASE_URL:?run ./start-wolfchatter first, it writes .env}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000}
+      # .env documents this one and the container could not see it, so naming the header a
+      # proxy appends did nothing at all. It is passed through by name rather than
+      # interpolated, because an interpolated default would set it to the empty string and
+      # the server reads that as a misconfigured value and refuses to start.
+      TRUSTED_CLIENT_HEADER:
     ports:
       - "${PORT:-3000}:${PORT:-3000}"
     depends_on:

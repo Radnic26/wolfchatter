@@ -3,6 +3,7 @@ import { performance } from "node:perf_hooks";
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import type { MiddlewareHandler } from "hono";
+import { compress } from "hono/compress";
 import { createApp, secureResponseHeaders } from "./app.ts";
 import { createDb } from "./db/create-db.ts";
 import { applyMigrations, migrationsDirectory } from "./db/migrate.ts";
@@ -58,6 +59,10 @@ const webRoot = join(import.meta.dirname, "../../web/dist");
 // None of this may reach `/ws`, and none of it does: the socket route is registered above
 // and answers first, so a middleware that writes a header never runs on the upgrade.
 app.use("/*", secureResponseHeaders);
+// The bundle is built compressed and was being served raw, so a browser downloaded 451 KB
+// of JavaScript for the 137 KB NFR-1 budgets. Fonts are already compressed and are left
+// alone by the content-type filter; anything under the 1 KiB default is not worth a pass.
+app.use("/*", compress());
 app.use("/*", cacheStaticFor("no-cache"));
 app.use("/assets/*", cacheStaticFor(immutableForOneYear));
 app.use("/*", serveStatic({ root: webRoot }));

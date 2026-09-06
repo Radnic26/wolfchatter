@@ -1,0 +1,104 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Wolfchatter deploy-readiness audit round",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["round", "track", "findings", "budgets", "summary"],
+  "properties": {
+    "round": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Audit round, matching the id prefix of every finding."
+    },
+    "track": {
+      "enum": ["security", "load", "performance", "all"],
+      "description": "The track this run covered."
+    },
+    "findings": {
+      "type": "array",
+      "description": "Proposals for the author. Empty is a valid result.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "track",
+          "control",
+          "severity",
+          "issue",
+          "failureScenario",
+          "repro",
+          "measurement",
+          "suggestedFix",
+          "confidence"
+        ],
+        "properties": {
+          "id": { "type": "string", "pattern": "^A[0-9]+-[0-9]+$" },
+          "track": { "enum": ["security", "load", "performance"] },
+          "control": {
+            "type": "string",
+            "description": "The NFR-2 control, or the NFR-1/NFR-3 budget this misses."
+          },
+          "file": {
+            "type": "string",
+            "description": "Path relative to the repository root, where one applies. A gap that is the absence of code has none."
+          },
+          "line": { "type": "integer", "minimum": 1 },
+          "severity": { "enum": ["high", "medium", "low"] },
+          "issue": { "type": "string", "description": "One sentence stating the gap." },
+          "failureScenario": {
+            "type": "string",
+            "description": "A concrete input or state, and the wrong result it produces."
+          },
+          "repro": {
+            "type": "string",
+            "description": "The exact command, and the output that shows it failing. No repro, no finding."
+          },
+          "measurement": {
+            "type": "string",
+            "description": "The number, with its unit and the conditions it was taken under; 'n/a' only for a binary control."
+          },
+          "suggestedFix": { "type": "string" },
+          "confidence": { "enum": ["high", "medium", "low"] }
+        }
+      }
+    },
+    "budgets": {
+      "type": "array",
+      "description": "Every budget in NFR-1..3, answered met or missed with the number that answers it.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requirement", "budget", "measured", "met"],
+        "properties": {
+          "requirement": { "enum": ["NFR-1", "NFR-2", "NFR-3"] },
+          "budget": { "type": "string", "description": "The budget as the PRD states it." },
+          "measured": { "type": "string", "description": "What was measured, with its unit." },
+          "met": { "type": "boolean" },
+          "note": {
+            "type": "string",
+            "description": "Required in spirit when met is false: why it was not met."
+          }
+        }
+      }
+    },
+    "breakingPoint": {
+      "type": "string",
+      "description": "Where one process stopped meeting the budget, and why it stopped. Load track only."
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["high", "medium", "low", "deployReady"],
+      "properties": {
+        "high": { "type": "integer", "minimum": 0 },
+        "medium": { "type": "integer", "minimum": 0 },
+        "low": { "type": "integer", "minimum": 0 },
+        "deployReady": {
+          "type": "boolean",
+          "description": "Whether the application is deploy-ready as it stands."
+        }
+      }
+    }
+  }
+}

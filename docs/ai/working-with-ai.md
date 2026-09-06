@@ -39,8 +39,8 @@ Certified Architect – Foundations blueprint.
 
 ## How the work was divided
 
-Eleven sessions between 4 and 6 September 2026, in which the author sent **147 messages** and
-the agent took **4,012 turns** — about 27 agent turns per instruction. That ratio is the
+Eleven sessions between 4 and 6 September 2026, in which the author sent **173 messages** and
+the agent took **4,476 turns** — about 26 agent turns per instruction. That ratio is the
 honest shape of the collaboration: direction and judgement on one side, execution on the
 other. The counts are taken as this page was written; the last session was still running, so
 re-running the script moves its figures by a few turns.
@@ -68,8 +68,8 @@ The agent produced, under that direction: the implementation, the tests, the mig
 wizard, the probe and load instruments, and the first draft of every document, along with the
 findings of both review rounds and the measurements behind them.
 
-Tool calls, by category, across all eleven sessions: **1,795 shell**, 240 writing, 53 reading,
-35 web, 26 other, and 9 that launched something — 4 subagents and 5 workflows. Reading looks
+Tool calls, by category, across all eleven sessions: **2,001 shell**, 253 writing, 53 reading,
+35 web, 30 other, and 13 that launched something — 8 subagents and 5 workflows. Reading looks
 small because most of it went through the shell as well; a subagent and a workflow each keep
 their own transcript, so the turns taken inside them are not in the counts above and cannot be
 recovered from these files.

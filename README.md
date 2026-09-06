@@ -58,7 +58,7 @@ Measured on the production image against a real PostgreSQL, on 2026-09-06. Every
 | Lighthouse, desktop | Performance **100**, Accessibility **100**, Best Practices 96, SEO 92 | [raw report](docs/audit/raw/lighthouse.after.json) |
 | List endpoints, p95 | **2.6 ms** and **2.3 ms** over HTTP, on 200 rooms and a room of 10,000 messages | [audit § performance](docs/audit/README.md#performance) |
 | Start-up | **0.9 s** for the application on a healthy database; 6.0 s for the whole stack, of which 5 s is compose's own healthcheck interval | [raw measurement](docs/audit/raw/cold-start.txt) |
-| Tests and coverage | 619 tests, **100%** of statements, branches, functions and lines | [CI](https://github.com/Radnic26/wolfchatter/actions/workflows/ci.yml) |
+| Tests and coverage | 647 tests, **100%** of statements, branches, functions and lines | [CI](https://github.com/Radnic26/wolfchatter/actions/workflows/ci.yml) |
 
 Memory, not CPU, is the first constraint: roughly 42 KiB per connected socket above a 50 MiB idle baseline, flat across a ten-minute soak. [`docs/infra-and-cost.md`](docs/infra-and-cost.md) turns that into a bill.
 

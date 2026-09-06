@@ -19,6 +19,8 @@ Companion to `PRD.md`. Every step is a branch and a pull request. Nothing is com
 
 ## Time budget
 
-Friday: research, PRD, questions to Wolfpack, repository initialised (PR 1). Saturday: PRs 2–6. Sunday: PRs 7–10. Monday morning: PRs 11–12, tag `v1.0.0`, send the email before 10:00.
+Friday: research, PRD, questions to Wolfpack, repository initialised (PR 1). Saturday: PRs 2–6. Sunday: PRs 7–10. Monday morning: PRs 11–12, then the email.
+
+The twelve rows above took fourteen pull requests — the brand system and a correction to the wordmark were their own — and four more followed them, which is what the end-to-end check in `PRD.md` §6 is for. Running the app on a second machine and on a phone produced five repairs and one improvement, none of which a test could have found. They are the pull requests after row 12 in the history. No tag was cut: the history is the record.
 
 Out of scope for this deliverable rather than deprioritised, and named as future work in the audit, self-review and README reports beside the Capacitor/Expo path: Playwright end-to-end, the PWA manifest and service worker, and a pass with a screen reader. If time runs short, the one concession is the soak test, which is shortened, never dropped. Never sacrificed: the one-command run with the wizard, the 100% coverage gate, the audit and self-review reports, the README. Every PR ships with its tests; coverage never drops below the threshold on `main`.

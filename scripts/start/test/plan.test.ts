@@ -19,11 +19,11 @@ describe("planStart", () => {
     expect(plan.reloads).toBe(false);
   });
 
-  it("starts the database first, then the dev servers, when only the database is in Docker", () => {
+  it("waits for the database to be healthy before the dev servers race its first boot", () => {
     const plan = planStart(answers({ mode: "docker-database" }));
 
     expect(plan.commands).toEqual([
-      ["docker", "compose", "up", "--detach", "db"],
+      ["docker", "compose", "up", "--detach", "--wait", "db"],
       ["npm", "run", "dev"],
     ]);
     expect(plan.url).toBe("http://localhost:5173");

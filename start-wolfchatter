@@ -1,6 +1,27 @@
 #!/usr/bin/env sh
 # One command from a fresh clone: asks a few questions, writes .env, starts everything.
-# Enter accepts every default; --yes skips the questions. Same file behind `npm start`.
+# Enter accepts every default; --help lists the flags. Same file behind `npm start`.
 set -eu
 cd "$(dirname "$0")"
+
+# Node strips the types of the wizard itself, so a Node without that support dies in the
+# module loader before the check inside it can say why. The same sentence, one step earlier.
+if ! node_version=$(node --version 2>/dev/null); then
+	echo "Wolfchatter needs Node 24.16 or newer; no node answered on this PATH." >&2
+	exit 1
+fi
+
+major=${node_version#v}
+minor=${major#*.}
+major=${major%%.*}
+minor=${minor%%.*}
+case "$major.$minor" in
+	*[!0-9.]* | .* | *.) major=0 minor=0 ;;
+esac
+
+if [ "$major" -lt 24 ] || { [ "$major" -eq 24 ] && [ "$minor" -lt 16 ]; }; then
+	echo "Wolfchatter needs Node 24.16 or newer; this is $node_version." >&2
+	exit 1
+fi
+
 exec node scripts/start/main.ts "$@"

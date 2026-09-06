@@ -24,7 +24,9 @@ export function planStart(answers: Answers): StartPlan {
   if (answers.mode === "docker-database") {
     return {
       commands: [
-        ["docker", "compose", "up", "--detach", "db"],
+        // `--wait` blocks until the healthcheck passes. Without it the dev server races the
+        // database's first initdb, loses, and stays down behind a URL that still answers.
+        ["docker", "compose", "up", "--detach", "--wait", "db"],
         ["npm", "run", "dev"],
       ],
       url: viteDevServer,

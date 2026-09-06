@@ -1,7 +1,9 @@
+import { join } from "node:path";
 import { performance } from "node:perf_hooks";
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
-import { createApp } from "./app.ts";
+import type { MiddlewareHandler } from "hono";
+import { createApp, secureResponseHeaders } from "./app.ts";
 import { createDb } from "./db/create-db.ts";
 import { applyMigrations, migrationsDirectory } from "./db/migrate.ts";
 import { parseServerConfig } from "./env.ts";
@@ -29,15 +31,39 @@ const app = createApp({
   db,
   broadcaster: hub,
   allowedOrigins: config.ALLOWED_ORIGINS,
-  addressOf: clientAddress,
+  addressOf: (c) => clientAddress(c, config.TRUSTED_CLIENT_HEADER),
   now: () => performance.now(),
 });
 
+/** Vite fingerprints every name under `assets/`, so those files never change under one. */
+const immutableForOneYear = "public, max-age=31536000, immutable";
+
+/**
+ * `serveStatic` has built its response by the time `onFound` runs and drops a header written
+ * there, so the policy is set on the way in instead, where the response picks it up.
+ */
+function cacheStaticFor(policy: string): MiddlewareHandler {
+  return async (c, next) => {
+    c.header("Cache-Control", policy);
+    await next();
+  };
+}
+
 // In development the browser talks to Vite, which proxies here; in the container this is
 // the only server, so it also hands out the built front end and falls back to the SPA shell.
-const webRoot = "./apps/web/dist";
+// Anchored on this file rather than the working directory, which is `apps/server` under
+// `npm run dev` and the repository root under Docker.
+const webRoot = join(import.meta.dirname, "../../web/dist");
+
+// None of this may reach `/ws`, and none of it does: the socket route is registered above
+// and answers first, so a middleware that writes a header never runs on the upgrade.
+app.use("/*", secureResponseHeaders);
+app.use("/*", cacheStaticFor("no-cache"));
+app.use("/assets/*", cacheStaticFor(immutableForOneYear));
 app.use("/*", serveStatic({ root: webRoot }));
-app.get("/*", serveStatic({ path: `${webRoot}/index.html` }));
+// The shell answers every deep link, an unknown `assets/` path included, so it takes the
+// revalidating policy back off that path — or a deploy would go unnoticed for a year.
+app.get("/*", cacheStaticFor("no-cache"), serveStatic({ path: join(webRoot, "index.html") }));
 
 const server = serve({ fetch: app.fetch, port: config.PORT, websocket: { server: sockets } });
 const heartbeat = setInterval(() => hub.sweepDeadConnections(), heartbeatMilliseconds);

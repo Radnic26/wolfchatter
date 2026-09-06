@@ -92,6 +92,7 @@ Each workspace keeps its tests in its own `test/` folder, mirroring `src/` file 
 | [docs/delivery-plan.md](docs/delivery-plan.md) | The sequence of pull requests, the time budget and what gets cut first |
 | [docs/infra-and-cost.md](docs/infra-and-cost.md) | What running it costs: staging and production tables, the assumptions behind every number and the thresholds at which the bill changes |
 | [docs/self-review/](docs/self-review/) | The first review round: every finding with its reproduction and the decision taken on it, what was repaired and what was deliberately not |
+| [docs/audit/](docs/audit/) | The deploy-readiness audit against the running image: the security probes, the load and soak runs with the numbers they produced, and every NFR budget answered met or missed |
 | [CLAUDE.md](CLAUDE.md) + [.claude/](.claude/) | The AI configuration this repository is built under, committed before the first line of code |
 
 ## Dependencies

@@ -1,0 +1,73 @@
+{
+  "lighthouseVersion": "12.8.2",
+  "fetchTime": "2026-09-06T10:19:19.108Z",
+  "formFactor": "desktop",
+  "categories": {
+    "performance": {
+      "title": "Performance",
+      "score": 0.98
+    },
+    "accessibility": {
+      "title": "Accessibility",
+      "score": 1
+    },
+    "best-practices": {
+      "title": "Best Practices",
+      "score": 0.93
+    },
+    "seo": {
+      "title": "SEO",
+      "score": 0.92
+    }
+  },
+  "metrics": {
+    "first-contentful-paint": {
+      "score": 0.98,
+      "displayValue": "0.7 s"
+    },
+    "largest-contentful-paint": {
+      "score": 0.94,
+      "displayValue": "1.0 s"
+    },
+    "speed-index": {
+      "score": 1,
+      "displayValue": "0.7 s"
+    },
+    "total-blocking-time": {
+      "score": 1,
+      "displayValue": "0 ms"
+    },
+    "cumulative-layout-shift": {
+      "score": 1,
+      "displayValue": "0"
+    },
+    "interactive": {
+      "score": 1,
+      "displayValue": "1.0 s"
+    }
+  },
+  "notable": {
+    "errors-in-console": {
+      "score": 0,
+      "displayValue": null
+    },
+    "uses-text-compression": {
+      "score": 0,
+      "displayValue": "Est savings of 329 KiB"
+    },
+    "inspector-issues": {
+      "score": 0,
+      "displayValue": null
+    },
+    "robots-txt": {
+      "score": 0,
+      "displayValue": "27 errors found"
+    }
+  },
+  "tileRequests": [
+    {
+      "status": 401,
+      "count": 25
+    }
+  ]
+}

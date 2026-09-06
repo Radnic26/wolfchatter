@@ -1,5 +1,5 @@
 import type { ChatClient, ChatStore, MapRoom } from "@wolfchatter/shared/client";
-import { type KeyboardEvent, type Ref, useEffect, useState } from "react";
+import { type KeyboardEvent, type MouseEvent, type Ref, useEffect, useState } from "react";
 import { RoomChat } from "../messages/room-chat.tsx";
 import { useRoomMessages } from "../messages/use-chat-store.ts";
 import { isSmallViewport } from "./is-small-viewport.ts";
@@ -116,6 +116,21 @@ export function RoomPanel({ store, client, room, failedToOpen, openExpanded, onC
     onClose();
   }
 
+  /**
+   * A chevron is a poor thing to hit with a thumb, and the collapsed row already reads as
+   * the handle of the sheet, so the whole of it opens and closes the room. The button inside
+   * still carries the label, `aria-expanded` and the keyboard; this only widens where a
+   * finger may land, which is why it asks for the small viewport — above the breakpoint
+   * there is no sheet, and the room's name is a heading rather than a handle.
+   */
+  function toggleFromPeekRow(event: MouseEvent<HTMLDivElement>) {
+    if (room === undefined || !isSmallViewport()) return;
+    // The button's own click is already a toggle, and it bubbles through here.
+    if (event.target instanceof Element && event.target.closest("button") !== null) return;
+
+    setExpanded(!expanded);
+  }
+
   return (
     <section
       id="chatroom"
@@ -129,7 +144,16 @@ export function RoomPanel({ store, client, room, failedToOpen, openExpanded, onC
         motion-reduce:transition-none md:static md:h-auto md:w-80 md:rounded-none md:border-t-0
         md:border-l md:pb-0 ${expanded ? "h-sheet" : "h-peek-safe"}`}
     >
-      <div className="flex h-peek shrink-0 items-center gap-2 px-4 md:h-auto md:py-4">
+      {/* The row is a wider hit area for the button inside it, which keeps the role, the
+          label, `aria-expanded` and the keyboard. Giving this div a role of its own would
+          announce the same control twice, and a key handler here would put a second
+          keyboard target on the same action. */}
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: the button inside carries the role */}
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: the button inside carries the keyboard */}
+      <div
+        className="flex h-peek shrink-0 items-center gap-2 px-4 md:h-auto md:py-4"
+        onClick={toggleFromPeekRow}
+      >
         <div className="min-w-0 flex-1">
           <PanelHeading ref={setHeading} room={room} failedToOpen={failedToOpen} />
           {newest !== undefined && !expanded ? (

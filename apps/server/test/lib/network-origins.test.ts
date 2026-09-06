@@ -1,6 +1,6 @@
 import type { NetworkInterfaceInfo } from "node:os";
 import { describe, expect, it } from "vitest";
-import { networkOrigins } from "../../src/lib/network-origins.ts";
+import { networkOrigins, reachableOrigins } from "../../src/lib/network-origins.ts";
 
 function ipv4(address: string, internal = false): NetworkInterfaceInfo {
   return {
@@ -52,5 +52,52 @@ describe("networkOrigins", () => {
 
   it("allows nothing extra on a machine with no network", () => {
     expect(networkOrigins({}, 3000)).toEqual([]);
+  });
+});
+
+describe("reachableOrigins", () => {
+  const allowed = [
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "http://192.168.1.20:3000",
+    "http://192.168.1.20:5173",
+  ];
+
+  it("offers the address someone would open on a phone", () => {
+    expect(reachableOrigins(allowed, 3000)).toEqual(["http://192.168.1.20:3000"]);
+  });
+
+  it("leaves out localhost, which reaches nothing but the machine already running it", () => {
+    expect(reachableOrigins(["http://localhost:3000"], 3000)).toEqual([]);
+  });
+
+  it("leaves out the loopback written as an address", () => {
+    expect(reachableOrigins(["http://127.0.0.1:3000", "http://[::1]:3000"], 3000)).toEqual([]);
+  });
+
+  it("leaves out an origin on another port, which this process does not answer", () => {
+    expect(reachableOrigins(["http://192.168.1.20:5173"], 3000)).toEqual([]);
+  });
+
+  it("keeps a deployed origin, which is also a way to reach this port", () => {
+    expect(reachableOrigins(["https://wolfchatter.example.com:3000"], 3000)).toEqual([
+      "https://wolfchatter.example.com:3000",
+    ]);
+  });
+
+  it("skips an entry that is not a URL rather than refusing to start", () => {
+    expect(reachableOrigins(["not a url", "http://192.168.1.20:3000"], 3000)).toEqual([
+      "http://192.168.1.20:3000",
+    ]);
+  });
+
+  it("names an origin once, however many times it was allowed", () => {
+    const twice = ["http://192.168.1.20:3000", "http://192.168.1.20:3000"];
+
+    expect(reachableOrigins(twice, 3000)).toEqual(["http://192.168.1.20:3000"]);
+  });
+
+  it("has nothing to offer when only localhost was allowed", () => {
+    expect(reachableOrigins(["http://localhost:3000"], 3000)).toEqual([]);
   });
 });

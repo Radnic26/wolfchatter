@@ -10,6 +10,7 @@ import {
   parseRunModeAnswer,
   shouldAskQuestions,
 } from "./answers.ts";
+import { blocksOnStaleVolume, renderStaleVolumeNotice } from "./database-volume.ts";
 import {
   embeddedDatabaseDirectory,
   planEnvFile,
@@ -30,6 +31,35 @@ const envFilePath = fileURLToPath(new URL(".env", projectRoot));
 
 function isDockerRunning(): boolean {
   return spawnSync("docker", ["info"], { stdio: "ignore" }).status === 0;
+}
+
+/**
+ * Asks compose what it calls itself rather than deriving it from the directory name, whose
+ * sanitising rules are compose's own. Anything unexpected answers "no volume": a guard that
+ * stopped a working first run would be worse than the failure it exists to explain.
+ */
+function findDatabaseVolume(): string | undefined {
+  // The compose file declares DATABASE_URL and POSTGRES_PASSWORD as required, so with no
+  // .env yet — which is the whole case this guard is for — `config` refuses to interpolate
+  // and says nothing about the project. Only the name is wanted, and it depends on neither,
+  // so they are stubbed for this one call.
+  const named = spawnSync("docker", ["compose", "config", "--format", "json"], {
+    cwd: fileURLToPath(projectRoot),
+    env: { ...process.env, DATABASE_URL: "postgres://name-only", POSTGRES_PASSWORD: "name-only" },
+  });
+  if (named.status !== 0) return undefined;
+
+  let project: unknown;
+  try {
+    project = (JSON.parse(named.stdout.toString()) as { name?: unknown }).name;
+  } catch {
+    return undefined;
+  }
+  if (typeof project !== "string" || project === "") return undefined;
+
+  const volume = `${project}_db-data`;
+  const found = spawnSync("docker", ["volume", "inspect", volume], { stdio: "ignore" });
+  return found.status === 0 ? volume : undefined;
 }
 
 function run(command: readonly string[]): void {
@@ -102,6 +132,20 @@ const answered = shouldAskQuestions(flags.takesDefaults, process.env, process.st
 const answers = envFilePlan.writes
   ? answered
   : { ...answered, port: readPort(existingEnvFile) ?? answered.port };
+
+// Checked before anything is announced or written: this run cannot succeed, and saying
+// "Writing .env" first and then stopping would describe something that did not happen.
+const staleVolume = envFilePlan.writes ? findDatabaseVolume() : undefined;
+if (
+  blocksOnStaleVolume({
+    mode: answers.mode,
+    mintedNewPassword: readDatabasePassword(existingEnvFile) === undefined,
+    volume: staleVolume,
+  })
+) {
+  console.error(renderStaleVolumeNotice(staleVolume ?? ""));
+  process.exit(1);
+}
 
 console.log(envFilePlan.notice);
 if (envFilePlan.writes) writeEnvFile(envFilePath, renderEnvFile(answers));

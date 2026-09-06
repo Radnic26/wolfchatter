@@ -2,6 +2,7 @@ import type { MapRoom } from "@wolfchatter/shared/client";
 import type { LatLng, LatLngTuple } from "leaflet";
 import { useEffect } from "react";
 import { MapContainer, TileLayer, useMap } from "react-leaflet";
+import { KeepMapSized } from "./keep-map-sized.tsx";
 import { MapTaps } from "./map-taps.tsx";
 import { prefersReducedMotion } from "./prefers-reduced-motion.ts";
 import { RoomMarkers } from "./room-markers.tsx";
@@ -57,6 +58,7 @@ export function ChatMap({ rooms, selectedRoomId, onSelectRoom, onTapMap }: ChatM
       // Leaflet reads the centre and the zoom once, at mount, so the view is moved with `flyTo`.
     >
       <TileLayer url={tiles.url} attribution={tiles.attribution} maxZoom={tiles.maxZoom} />
+      <KeepMapSized />
       <MapTaps onTap={onTapMap} />
       <RoomMarkers rooms={rooms} selectedRoomId={selectedRoomId} onSelectRoom={onSelectRoom} />
       <FollowSelectedRoom room={rooms.find((room) => room.id === selectedRoomId)} />

@@ -32,6 +32,12 @@ RUN --mount=type=cache,target=/root/.npm \
 FROM node:24-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
+
+# The image runs `node`, never `npm`, and npm's own vendored dependencies were four of the
+# six high-severity advisories a scan of this image reports — none of them on a path this
+# process can reach, and all of them invisible to `npm audit`, which reads the project's
+# tree rather than the image. Removing what is never executed removes them from the artefact.
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 COPY --from=runtime-dependencies /app/node_modules ./node_modules
 COPY --from=runtime-dependencies /app/package.json ./package.json
 COPY apps/server ./apps/server

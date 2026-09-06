@@ -44,13 +44,16 @@ export function parsePortAnswer(input: string): number | undefined {
   return port >= 1 && port <= 65535 ? port : undefined;
 }
 
-/** The floor is the runtime `package.json` asks for: the Node 24 LTS line that runs the
- * server's TypeScript with no build step. */
+/**
+ * The floor is the runtime `package.json` asks for, and it is 22.18 because that is where
+ * Node stopped flagging type stripping — below it the wizard and the server cannot be
+ * loaded at all, whatever else is installed. Verified on 22.18, 24 and 25.
+ */
 export function isSupportedNodeVersion(version: string): boolean {
   const parsed = /^v?(\d+)\.(\d+)\./.exec(version);
   if (parsed === null) return false;
   const major = Number(parsed[1]);
   const minor = Number(parsed[2]);
-  if (major > 24) return true;
-  return major === 24 && minor >= 16;
+  if (major > 22) return true;
+  return major === 22 && minor >= 18;
 }

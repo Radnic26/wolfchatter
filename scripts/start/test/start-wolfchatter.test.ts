@@ -27,16 +27,16 @@ const nodeReporting = (version: string) =>
 
 describe("start-wolfchatter", () => {
   it("starts the wizard on a Node new enough to strip the types", () => {
-    const run = runWrapperWith(nodeReporting("v24.16.0"));
+    const run = runWrapperWith(nodeReporting("v22.18.0"));
 
     expect(run.stdout).toContain("the wizard starts here");
     expect(run.status).toBe(0);
   });
 
   it("explains itself before the module loader can fail on an older Node", () => {
-    const run = runWrapperWith(nodeReporting("v22.20.0"));
+    const run = runWrapperWith(nodeReporting("v20.20.2"));
 
-    expect(run.stderr).toContain("Wolfchatter needs Node 24.16 or newer; this is v22.20.0.");
+    expect(run.stderr).toContain("Wolfchatter needs Node 22.18 or newer; this is v20.20.2.");
     expect(run.stdout).not.toContain("the wizard starts here");
     expect(run.status).toBe(1);
   });
@@ -44,14 +44,14 @@ describe("start-wolfchatter", () => {
   it("names the version it needs when node cannot be run at all", () => {
     const run = runWrapperWith("#!/bin/sh\nexit 127\n");
 
-    expect(run.stderr).toContain("Node 24.16 or newer");
+    expect(run.stderr).toContain("Node 22.18 or newer");
     expect(run.status).toBe(1);
   });
 
   it("refuses a version it cannot read rather than guessing at it", () => {
     const run = runWrapperWith(nodeReporting("wolf"));
 
-    expect(run.stderr).toContain("Node 24.16 or newer");
+    expect(run.stderr).toContain("Node 22.18 or newer");
     expect(run.status).toBe(1);
   });
 });

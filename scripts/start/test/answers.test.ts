@@ -103,15 +103,18 @@ describe("parsePortAnswer", () => {
 });
 
 describe("isSupportedNodeVersion", () => {
-  it("accepts the versions that have the APIs the server uses", () => {
-    expect(isSupportedNodeVersion("v24.16.0")).toBe(true);
+  it("accepts every line that can strip the types, odd releases included", () => {
+    expect(isSupportedNodeVersion("v22.18.0")).toBe(true);
+    expect(isSupportedNodeVersion("v22.23.2")).toBe(true);
     expect(isSupportedNodeVersion("v24.20.0")).toBe(true);
+    expect(isSupportedNodeVersion("v25.9.0")).toBe(true);
     expect(isSupportedNodeVersion("v26.0.0")).toBe(true);
   });
 
-  it("rejects anything older", () => {
-    expect(isSupportedNodeVersion("v24.15.0")).toBe(false);
-    expect(isSupportedNodeVersion("v22.20.0")).toBe(false);
+  it("rejects anything older, where a .ts entry point cannot be loaded at all", () => {
+    expect(isSupportedNodeVersion("v22.17.0")).toBe(false);
+    expect(isSupportedNodeVersion("v20.20.2")).toBe(false);
+    expect(isSupportedNodeVersion("v18.20.8")).toBe(false);
   });
 
   it("rejects a version it cannot read", () => {

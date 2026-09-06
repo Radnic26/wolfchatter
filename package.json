@@ -6,7 +6,7 @@
   "description": "Real-time chat on a Leaflet map",
   "license": "MIT",
   "engines": {
-    "node": ">=24.16"
+    "node": ">=22.18"
   },
   "workspaces": [
     "apps/*",

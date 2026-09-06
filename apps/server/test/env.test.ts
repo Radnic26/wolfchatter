@@ -36,6 +36,18 @@ describe("parseServerConfig", () => {
     expect(parseServerConfig({ DATABASE_URL: url }).DATABASE_URL).toBe(url);
   });
 
+  it("seeds nothing unless it is asked to, so a real deployment starts on an empty map", () => {
+    expect(parseServerConfig({}).SEED_SAMPLE_DATA).toBe(false);
+  });
+
+  it("reads the seed flag the wizard writes on a first run", () => {
+    expect(parseServerConfig({ SEED_SAMPLE_DATA: "true" }).SEED_SAMPLE_DATA).toBe(true);
+  });
+
+  it("rejects a seed flag set to nothing, rather than reading it as off", () => {
+    expect(() => parseServerConfig({ SEED_SAMPLE_DATA: "" })).toThrow(/Invalid environment/);
+  });
+
   it("rejects a port outside the valid range", () => {
     expect(() => parseServerConfig({ PORT: "70000" })).toThrow(/Invalid environment/);
   });

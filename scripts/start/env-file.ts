@@ -108,6 +108,10 @@ export function renderEnvFile(answers: Answers): string {
     "# Written by ./start-wolfchatter. Git-ignored, mode 0600, safe to delete and regenerate.",
     `PORT=${answers.port}`,
     `ALLOWED_ORIGINS=http://localhost:5173,http://localhost:${answers.port}`,
+    "",
+    "# A first run opens on a map with a few sample rooms on it. The server only ever seeds",
+    "# a database with no rooms in it, so this line does nothing from the second boot on.",
+    "SEED_SAMPLE_DATA=true",
   ];
 
   if (answers.mode === "embedded") {

@@ -35,6 +35,9 @@ services:
       # interpolated, because an interpolated default would set it to the empty string and
       # the server reads that as a misconfigured value and refuses to start.
       TRUSTED_CLIENT_HEADER:
+      # Passed through by name for the same reason: an interpolated default would set it to
+      # the empty string, which is not a boolean and stops the server at startup.
+      SEED_SAMPLE_DATA:
     ports:
       - "${PORT:-3000}:${PORT:-3000}"
     depends_on:

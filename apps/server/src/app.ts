@@ -1,22 +1,75 @@
-import { type Context, type ErrorHandler, Hono } from "hono";
+import { type Context, type ErrorHandler, Hono, type MiddlewareHandler } from "hono";
 import { HTTPException } from "hono/http-exception";
+import { secureHeaders } from "hono/secure-headers";
 import type { Queryable } from "./db/db.ts";
 import { failWith } from "./lib/api-error.ts";
 import { limitWritesPerCaller } from "./lib/rate-limit.ts";
 import { createMessageRoutes } from "./messages/routes.ts";
 import { createRoomRoutes } from "./rooms/routes.ts";
 import type { Broadcaster } from "./ws/broadcaster.ts";
+import { isAllowedOrigin } from "./ws/origin-allowlist.ts";
 import { createSocketRoutes } from "./ws/routes.ts";
+
+/**
+ * A tile server is the one origin the app reaches outside itself, and which of the two it
+ * reaches is chosen when the front end is built rather than told to this process, so the
+ * policy names the watercolour default and the OpenStreetMap alternative `.env.example`
+ * offers instead. Everything else is served from here: the socket is same-origin, and the
+ * build emits no inline script and no inline style.
+ */
+const tileServers = ["https://tiles.stadiamaps.com", "https://tile.openstreetmap.org"];
+
+const contentSecurityPolicy = {
+  defaultSrc: ["'self'"],
+  connectSrc: ["'self'"],
+  imgSrc: ["'self'", "data:", ...tileServers],
+  styleSrc: ["'self'"],
+  frameAncestors: ["'none'"],
+};
+
+/** A year, which is the shortest max-age the HSTS preload lists accept. */
+const strictTransportSecurity = "max-age=31536000; includeSubDomains";
+
+const headersOverTls = secureHeaders({ contentSecurityPolicy, strictTransportSecurity });
+const headersOverPlainHttp = secureHeaders({ contentSecurityPolicy, strictTransportSecurity: false });
+
+/**
+ * HSTS pins a host to https for a year, so sending it from a plain http origin would take
+ * `localhost` away from every other project on the machine. It waits for the request that
+ * proves TLS terminates here.
+ *
+ * Never mount this on `/ws`: an upgrade does not survive middleware that writes a header.
+ */
+export const secureResponseHeaders: MiddlewareHandler = (c, next) =>
+  new URL(c.req.url).protocol === "https:" ? headersOverTls(c, next) : headersOverPlainHttp(c, next);
+
+/**
+ * The allowlist NFR-2 promises covers HTTP as well as the upgrade, and a browser attaches
+ * `Origin` to every cross-origin write. A request carrying none is not a browser — curl,
+ * the container's health check, any server-to-server caller — and is let through, where the
+ * handshake refuses it, because there a browser always sends one.
+ */
+function refuseForeignWrites(allowedOrigins: readonly string[]): MiddlewareHandler {
+  return async (c, next) => {
+    const origin = c.req.header("origin");
+    if (c.req.method === "POST" && origin !== undefined && !isAllowedOrigin(origin, allowedOrigins)) {
+      return failWith(c, "invalid_request", 403, `refused origin ${origin}`);
+    }
+
+    await next();
+  };
+}
 
 /**
  * Anything the framework itself rejects before a handler runs — a body that is not JSON,
  * above all — arrives here as a client error and has to stay one. Only a genuine fault
- * becomes a 500, and neither answer repeats what the exception said.
+ * becomes a 500, and neither answer repeats what the exception said. A fault is the one
+ * case worth a stack: without it a request id leads an operator to a line of prose.
  */
 const respondToFailure: ErrorHandler = (error, c) =>
   error instanceof HTTPException && error.status < 500
     ? failWith(c, "invalid_request", error.status, String(error))
-    : failWith(c, "internal_error", 500, String(error));
+    : failWith(c, "internal_error", 500, error.stack ?? String(error));
 
 export interface AppDependencies {
   db: Queryable;
@@ -34,6 +87,10 @@ export function createApp({ db, broadcaster, allowedOrigins, addressOf, now }: A
 
   return (
     new Hono()
+      // Scoped to the API namespace rather than the instance, because the instance also
+      // carries `/ws`. The process mounts the same headers over the front end it serves.
+      .use("/api/*", secureResponseHeaders)
+      .use("/api/*", refuseForeignWrites(allowedOrigins))
       .get("/api/health", (c) => c.json({ status: "ok" as const }))
       .route("/api", createRoomRoutes({ db, broadcaster, limitWrites }))
       .route("/api", createMessageRoutes({ db, broadcaster, limitWrites }))

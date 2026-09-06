@@ -5,14 +5,14 @@ import { MapContainer, TileLayer, useMap } from "react-leaflet";
 import { MapTaps } from "./map-taps.tsx";
 import { prefersReducedMotion } from "./prefers-reduced-motion.ts";
 import { RoomMarkers } from "./room-markers.tsx";
-import { resolveTileSource } from "./tile-source.ts";
+import { tileSource } from "./tile-source.ts";
 import "leaflet/dist/leaflet.css";
 
 /** The view of the reference: Cluj-Napoca, far enough out to place it in the country. */
 const initialCenter: LatLngTuple = [46.7712, 23.6236];
 const initialZoom = 5;
 
-const tiles = resolveTileSource(import.meta.env);
+const tiles = tileSource;
 
 type ChatMapProps = {
   rooms: readonly MapRoom[];

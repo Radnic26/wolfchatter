@@ -17,7 +17,7 @@ const emptyDirectory = () => mkdtempSync(join(tmpdir(), "wolfchatter-env-"));
 const answers = (overrides: Partial<Answers> = {}): Answers => ({
   mode: "docker",
   port: 3000,
-  tiles: "watercolor",
+  networkAddresses: [],
   databasePassword: "example-password",
   ...overrides,
 });
@@ -56,36 +56,32 @@ describe("renderEnvFile", () => {
     );
   });
 
+  it("allows this machine's own addresses, so the app opens on a phone on the same Wi-Fi", () => {
+    const rendered = renderEnvFile(answers({ port: 8080, networkAddresses: ["192.168.1.20"] }));
+
+    expect(rendered).toContain("http://192.168.1.20:8080");
+  });
+
+  it("allows those addresses on the Vite port too, because two of the three modes serve there", () => {
+    const rendered = renderEnvFile(answers({ networkAddresses: ["192.168.1.20"] }));
+
+    expect(rendered).toContain("http://192.168.1.20:5173");
+  });
+
+  it("names no network address when the machine is on no network", () => {
+    const origins = renderEnvFile(answers({ networkAddresses: [] }))
+      .split("\n")
+      .find((line) => line.startsWith("ALLOWED_ORIGINS="));
+
+    expect(origins).toBe("ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000");
+  });
+
   it("writes the chosen port", () => {
     expect(renderEnvFile(answers({ port: 8080 }))).toContain("PORT=8080");
   });
 
   it("asks the server to seed sample rooms, so a first run opens on a map with pins on it", () => {
     expect(renderEnvFile(answers())).toMatch(/^SEED_SAMPLE_DATA=true$/m);
-  });
-
-  it("leaves the watercolour default unset, and shows the way off it", () => {
-    const rendered = renderEnvFile(answers({ tiles: "watercolor" }));
-
-    expect(rendered).not.toMatch(/^VITE_TILE_URL=/m);
-    expect(rendered).toContain("# VITE_TILE_URL=https://tile.openstreetmap.org/{z}/{x}/{y}.png");
-  });
-
-  it("writes the OpenStreetMap tiles when they were chosen", () => {
-    const rendered = renderEnvFile(answers({ tiles: "osm" }));
-
-    expect(rendered).toContain("VITE_TILE_URL=https://tile.openstreetmap.org/{z}/{x}/{y}.png");
-    expect(rendered).not.toMatch(/^# VITE_TILE_URL=/m);
-  });
-
-  it("quotes the attribution, whose own HTML attributes would end the value early", () => {
-    const attribution = renderEnvFile(answers({ tiles: "osm" }))
-      .split("\n")
-      .find((line) => line.startsWith("VITE_TILE_ATTRIBUTION="));
-
-    expect(attribution).toBe(
-      `VITE_TILE_ATTRIBUTION='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'`,
-    );
   });
 
   it("ends with a newline, so appending to it cannot corrupt the last line", () => {

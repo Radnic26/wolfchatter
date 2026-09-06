@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { type Answers, parsePortAnswer } from "./answers.ts";
-import { openStreetMapTiles } from "./tile-source.ts";
+import { networkUrls } from "./network.ts";
 
 const databaseUser = "wolfchatter";
 const databaseName = "wolfchatter";
@@ -11,6 +11,9 @@ const databaseName = "wolfchatter";
  * root — and it is the path `.env.example` documents.
  */
 export const embeddedDatabaseDirectory = "apps/server/data/pg";
+
+/** Where Vite serves in the two modes that reload, and the origin a phone would use there. */
+const viteDevServerPort = 5173;
 
 export type EnvFilePlan = {
   writes: boolean;
@@ -78,28 +81,12 @@ function databaseUrl(answers: Answers): string {
   return `postgres://${databaseUser}:${answers.databasePassword}@${host}/${databaseName}`;
 }
 
-/**
- * The web app already draws watercolour without being told, so the default costs no line
- * here; only the switch away from it does. The comment stays either way, because opening
- * the app on a phone by its address on the network is exactly when someone needs it.
- *
- * The attribution is single-quoted: it is HTML, its own attributes use double quotes, and
- * both Node's `--env-file` and Vite would otherwise stop the value at the first space.
- */
-function tileLines(answers: Answers): string[] {
-  if (answers.tiles === "watercolor") {
-    return [
-      "# Map tiles: watercolour via Stadia, which needs no key on localhost but answers 401",
-      "# to any other host. To open the app from a phone on your network, uncomment these:",
-      `# VITE_TILE_URL=${openStreetMapTiles.url}`,
-      `# VITE_TILE_ATTRIBUTION='${openStreetMapTiles.attribution}'`,
-    ];
-  }
-
+function allowedOrigins(answers: Answers): string[] {
   return [
-    "# Map tiles: OpenStreetMap, which never needs a key and works from any host.",
-    `VITE_TILE_URL=${openStreetMapTiles.url}`,
-    `VITE_TILE_ATTRIBUTION='${openStreetMapTiles.attribution}'`,
+    "http://localhost:5173",
+    `http://localhost:${answers.port}`,
+    ...networkUrls(answers.networkAddresses, answers.port),
+    ...networkUrls(answers.networkAddresses, viteDevServerPort),
   ];
 }
 
@@ -107,7 +94,9 @@ export function renderEnvFile(answers: Answers): string {
   const lines = [
     "# Written by ./start-wolfchatter. Git-ignored, mode 0600, safe to delete and regenerate.",
     `PORT=${answers.port}`,
-    `ALLOWED_ORIGINS=http://localhost:5173,http://localhost:${answers.port}`,
+    // The socket upgrade and every write check Origin, so a phone reaching this machine by
+    // its address on the Wi-Fi has to be named here or the map loads and nothing else works.
+    `ALLOWED_ORIGINS=${allowedOrigins(answers).join(",")}`,
     "",
     "# A first run opens on a map with a few sample rooms on it. The server only ever seeds",
     "# a database with no rooms in it, so this line does nothing from the second boot on.",
@@ -122,8 +111,6 @@ export function renderEnvFile(answers: Answers): string {
   } else {
     lines.push("", `DATABASE_URL=${databaseUrl(answers)}`, `POSTGRES_PASSWORD=${answers.databasePassword}`);
   }
-
-  lines.push("", ...tileLines(answers));
 
   return `${lines.join("\n")}\n`;
 }

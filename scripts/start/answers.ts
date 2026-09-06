@@ -1,11 +1,11 @@
 import type { RunMode } from "./run-mode.ts";
-import type { TileSource, TileSourceChoice } from "./tile-source.ts";
 
 export type Answers = {
   mode: RunMode;
   port: number;
-  tiles: TileSource;
   databasePassword: string;
+  /** This machine's addresses on the network, so a phone on the same Wi-Fi is let in. */
+  networkAddresses: readonly string[];
 };
 
 export const defaultPort = 3000;
@@ -27,15 +27,6 @@ export function parseRunModeAnswer(
   const choice = Number.parseInt(input.trim(), 10);
   if (Number.isNaN(choice)) return undefined;
   return offered[choice - 1]?.mode;
-}
-
-export function parseTileSourceAnswer(
-  input: string,
-  offered: readonly TileSourceChoice[],
-): TileSource | undefined {
-  const choice = Number.parseInt(input.trim(), 10);
-  if (Number.isNaN(choice)) return undefined;
-  return offered[choice - 1]?.source;
 }
 
 export function parsePortAnswer(input: string): number | undefined {

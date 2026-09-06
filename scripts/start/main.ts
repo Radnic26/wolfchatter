@@ -1,4 +1,5 @@
 import { spawn, spawnSync } from "node:child_process";
+import { networkInterfaces } from "node:os";
 import { createInterface } from "node:readline/promises";
 import { fileURLToPath } from "node:url";
 import {
@@ -7,7 +8,6 @@ import {
   isSupportedNodeVersion,
   parsePortAnswer,
   parseRunModeAnswer,
-  parseTileSourceAnswer,
   shouldAskQuestions,
 } from "./answers.ts";
 import {
@@ -20,16 +20,10 @@ import {
   writeEnvFile,
 } from "./env-file.ts";
 import { parseFlags } from "./flags.ts";
+import { localNetworkAddresses, networkUrls } from "./network.ts";
 import { planStart } from "./plan.ts";
-import {
-  renderDockerMissingNotice,
-  renderReady,
-  renderRunModeQuestion,
-  renderTileSourceQuestion,
-  renderUsage,
-} from "./prompts.ts";
+import { renderDockerMissingNotice, renderReady, renderRunModeQuestion, renderUsage } from "./prompts.ts";
 import { defaultRunMode, offeredRunModes, usesDockerDatabase } from "./run-mode.ts";
-import { defaultTileSource, offeredTileSources } from "./tile-source.ts";
 
 const projectRoot = new URL("../../", import.meta.url);
 const envFilePath = fileURLToPath(new URL(".env", projectRoot));
@@ -55,7 +49,11 @@ function runLast(command: readonly string[]): void {
   child.on("exit", (code) => process.exit(code ?? 0));
 }
 
-async function ask(hasDocker: boolean, databasePassword: string): Promise<Answers> {
+async function ask(
+  hasDocker: boolean,
+  databasePassword: string,
+  networkAddresses: readonly string[],
+): Promise<Answers> {
   const offered = offeredRunModes(hasDocker);
   const readline = createInterface({ input: process.stdin, output: process.stdout });
 
@@ -68,12 +66,8 @@ async function ask(hasDocker: boolean, databasePassword: string): Promise<Answer
   const portInput = await readline.question(`Port for the API [${defaultPort}]: `);
   const port = parsePortAnswer(portInput) ?? defaultPort;
 
-  console.log(renderTileSourceQuestion(offeredTileSources));
-  const tilesInput = await readline.question("Choose [1]: ");
-  const tiles = parseTileSourceAnswer(tilesInput, offeredTileSources) ?? defaultTileSource;
-
   readline.close();
-  return { mode, port, tiles, databasePassword };
+  return { mode, port, databasePassword, networkAddresses };
 }
 
 if (!isSupportedNodeVersion(process.version)) {
@@ -98,10 +92,11 @@ const hasDocker = isDockerRunning();
 const existingEnvFile = readEnvFile(envFilePath);
 const envFilePlan = planEnvFile(existingEnvFile !== undefined, flags.rewritesEnvFile);
 const databasePassword = readDatabasePassword(existingEnvFile) ?? crypto.randomUUID();
+const networkAddresses = localNetworkAddresses(networkInterfaces());
 
 const answered = shouldAskQuestions(flags.takesDefaults, process.env, process.stdin.isTTY === true)
-  ? await ask(hasDocker, databasePassword)
-  : { mode: defaultRunMode(hasDocker), port: defaultPort, tiles: defaultTileSource, databasePassword };
+  ? await ask(hasDocker, databasePassword, networkAddresses)
+  : { mode: defaultRunMode(hasDocker), port: defaultPort, databasePassword, networkAddresses };
 
 // A kept .env is the file the server and Vite will read, so the port in it is the one to print.
 const answers = envFilePlan.writes
@@ -118,7 +113,7 @@ if (!usesDockerDatabase(answers.mode)) {
 run(["npm", "install"]);
 
 const plan = planStart(answers);
-console.log(renderReady(plan.url, plan.reloads));
+console.log(renderReady(plan.url, plan.reloads, networkUrls(networkAddresses, plan.port)));
 
 for (const command of plan.commands.slice(0, -1)) run(command);
 runLast(plan.commands[plan.commands.length - 1] ?? []);

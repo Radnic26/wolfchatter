@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { type ChatStore, createChatStore, type MapRoom } from "@wolfchatter/shared/client";
 import type { Message } from "@wolfchatter/shared/schema";
@@ -111,6 +111,78 @@ describe("RoomPanel", () => {
     await user.click(screen.getByRole("button", { name: "Collapse the chatroom" }));
 
     expect(screen.getByRole("button", { name: "Expand the chatroom" })).toBeInTheDocument();
+  });
+
+  describe("tapping the collapsed row, where a thumb lands", () => {
+    /** The wider hit area is for the sheet, and above the breakpoint there is no sheet. */
+    function onAPhone() {
+      vi.stubGlobal("matchMedia", (query: string) => ({ matches: query === "(width < 48rem)" }));
+    }
+
+    it("opens the room when the name is tapped, not only the chevron", async () => {
+      const user = userEvent.setup();
+      onAPhone();
+      showPanel(stored);
+
+      await user.click(screen.getByRole("heading", { name: "Chatroom 7" }));
+
+      expect(screen.getByRole("button", { name: "Collapse the chatroom" })).toBeInTheDocument();
+    });
+
+    it("closes it again on the next tap", async () => {
+      const user = userEvent.setup();
+      onAPhone();
+      showPanel(stored, true);
+
+      await user.click(screen.getByRole("heading", { name: "Chatroom 7" }));
+
+      expect(screen.getByRole("button", { name: "Expand the chatroom" })).toBeInTheDocument();
+    });
+
+    it("opens it from the newest message too, which is most of the row", async () => {
+      const user = userEvent.setup();
+      onAPhone();
+      serveMessages([message("Old Town is packed tonight.")]);
+      showPanel(stored);
+      // The same line is in the history below as well as in the peek, so the one the thumb
+      // can actually reach is the one beside the room's name.
+      const beside = screen.getByRole("heading", { name: "Chatroom 7" }).parentElement;
+      const peek = await within(beside as HTMLElement).findByText(/Old Town is packed/);
+
+      await user.click(peek);
+
+      expect(screen.getByRole("button", { name: "Collapse the chatroom" })).toBeInTheDocument();
+    });
+
+    it("toggles once when the chevron itself is tapped, not twice", async () => {
+      const user = userEvent.setup();
+      onAPhone();
+      showPanel(stored);
+
+      await user.click(screen.getByRole("button", { name: "Expand the chatroom" }));
+
+      expect(screen.getByRole("button", { name: "Collapse the chatroom" })).toBeInTheDocument();
+    });
+
+    it("leaves the name alone above the breakpoint, where it is a heading and not a handle", async () => {
+      const user = userEvent.setup();
+      vi.stubGlobal("matchMedia", () => ({ matches: false }));
+      showPanel(stored);
+
+      await user.click(screen.getByRole("heading", { name: "Chatroom 7" }));
+
+      expect(screen.getByRole("button", { name: "Expand the chatroom" })).toBeInTheDocument();
+    });
+
+    it("does nothing on the empty panel, which has no room to open", async () => {
+      const user = userEvent.setup();
+      onAPhone();
+      showPanel(undefined);
+
+      await user.click(screen.getByText("Click on the map to start a chat"));
+
+      expect(screen.queryByRole("button", { name: /the chatroom/ })).not.toBeInTheDocument();
+    });
   });
 
   it("opens already expanded for the room a tap on the map has just made", () => {

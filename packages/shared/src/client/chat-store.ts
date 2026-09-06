@@ -99,8 +99,10 @@ export function createChatStore(storage: UsernameStorage = forgetful()): ChatSto
 
     setStoredRooms(rooms) {
       const arrived = new Set(rooms.map((room) => room.id));
-      // Someone can click while the first list is still in flight; their pin outlives it.
-      const unanswered = snapshot.rooms.filter((room) => room.status === "pending" && !arrived.has(room.id));
+      // The list is a page of what existed when it was asked for, so it may add rooms but
+      // never accounts for one learned since: a pin clicked while it was in flight, and the
+      // room another browser opened that the socket announced meanwhile, both outlive it.
+      const unanswered = snapshot.rooms.filter((room) => !arrived.has(room.id));
       publish({ rooms: [...rooms.map(stored), ...unanswered] });
     },
 

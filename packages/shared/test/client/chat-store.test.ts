@@ -87,6 +87,17 @@ describe("createChatStore", () => {
     expect(store.getSnapshot().rooms.at(-1)).toEqual({ status: "pending", ...clicked });
   });
 
+  it("keeps a room confirmed while the first list was still in flight", () => {
+    const announced = room();
+    // The socket announces a room another browser opened, or this browser's own POST answers,
+    // while the list fetched on mount is still on its way.
+    store.storeRoom(announced);
+
+    store.setStoredRooms([room()]);
+
+    expect(store.getSnapshot().rooms.map((pin) => pin.id)).toContain(announced.id);
+  });
+
   it("does not keep a pin the arriving list already accounts for", () => {
     const created = room();
     store.openRoom({ id: created.id, lat: created.lat, lng: created.lng });

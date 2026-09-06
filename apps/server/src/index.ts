@@ -7,6 +7,7 @@ import { compress } from "hono/compress";
 import { createApp, secureResponseHeaders } from "./app.ts";
 import { createDb } from "./db/create-db.ts";
 import { applyMigrations, migrationsDirectory } from "./db/migrate.ts";
+import { seedSampleData } from "./db/seed.ts";
 import { parseServerConfig } from "./env.ts";
 import { clientAddress } from "./lib/client-address.ts";
 import { createChatHub } from "./ws/hub.ts";
@@ -22,6 +23,11 @@ const db = createDb(config.DATABASE_URL, "./data/pg");
 const applied = await applyMigrations(db, migrationsDirectory);
 if (applied.length > 0) {
   console.log(`Applied ${applied.length} migration(s): ${applied.join(", ")}`);
+}
+
+if (config.SEED_SAMPLE_DATA) {
+  const seeded = await seedSampleData(db);
+  if (seeded > 0) console.log(`Seeded ${seeded} sample rooms, so the map opens with pins on it.`);
 }
 
 const sockets = createSocketServer();

@@ -60,6 +60,10 @@ describe("renderEnvFile", () => {
     expect(renderEnvFile(answers({ port: 8080 }))).toContain("PORT=8080");
   });
 
+  it("asks the server to seed sample rooms, so a first run opens on a map with pins on it", () => {
+    expect(renderEnvFile(answers())).toMatch(/^SEED_SAMPLE_DATA=true$/m);
+  });
+
   it("leaves the watercolour default unset, and shows the way off it", () => {
     const rendered = renderEnvFile(answers({ tiles: "watercolor" }));
 

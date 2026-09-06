@@ -9,6 +9,9 @@ const serverEnvironment = z.object({
     .transform((value) => value.split(",").map((origin) => origin.trim()))
     .refine((origins) => origins.every(Boolean), "must not contain an empty origin"),
   TRUSTED_CLIENT_HEADER: z.string().min(1).optional(),
+  // What the wizard writes on a first run, so a fresh clone opens on a map with pins on it.
+  // It only ever applies to a database with no rooms in it, so leaving it set costs nothing.
+  SEED_SAMPLE_DATA: z.stringbool().default(false),
 });
 
 export type ServerConfig = z.infer<typeof serverEnvironment>;

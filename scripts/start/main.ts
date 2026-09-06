@@ -77,7 +77,7 @@ async function ask(hasDocker: boolean, databasePassword: string): Promise<Answer
 }
 
 if (!isSupportedNodeVersion(process.version)) {
-  console.error(`Wolfchatter needs Node 24.16 or newer; this is ${process.version}.`);
+  console.error(`Wolfchatter needs Node 22.18 or newer; this is ${process.version}. Try: nvm use 24`);
   process.exit(1);
 }
 

@@ -28,7 +28,7 @@ cd wolfchatter
 ./start-wolfchatter
 ```
 
-Enter answers every question. Docker is the only prerequisite, and one of the modes does not need even that.
+Enter answers every question.
 
 ## Why it exists
 
@@ -66,7 +66,19 @@ Every row but the last two comes from the [deploy-readiness audit](docs/audit/).
 
 ## Running it
 
-The wizard asks two questions. The first decides how the app runs:
+### What you need
+
+| | | |
+|---|---|---|
+| **Node ≥ 22.18** | **required** | 22.18 is where Node stopped flagging TypeScript type stripping, and this repository runs its TypeScript with no build step — below it the wizard cannot be loaded at all. Verified on **22.18.0, 22.23.2, 24.20.0 and 25.9.0**, app and full test suite. `.nvmrc` pins 24, which is what CI uses. |
+| **Docker** | optional | Needed for the two modes that run PostgreSQL in a container, and for `docker compose up --build`. Without a running daemon the wizard offers the embedded database instead and everything still works. |
+| Anything else | no | No database to install, no global package, no `.env` to write by hand. |
+
+Odd-numbered Node lines (23, 25) are fine. Some development dependencies declare LTS-only `engines`, which npm reports as a warning and which this repository deliberately does not turn into an error — see the comment in `.npmrc`.
+
+### The wizard
+
+It asks two questions. The first decides how the app runs:
 
 | Choice | What starts | Where | Reloads on edit |
 |---|---|---|---|

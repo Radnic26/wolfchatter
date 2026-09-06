@@ -6,8 +6,9 @@ cd "$(dirname "$0")"
 
 # Node strips the types of the wizard itself, so a Node without that support dies in the
 # module loader before the check inside it can say why. The same sentence, one step earlier.
+# 22.18 is where stripping stopped being flagged, which is what makes it the floor.
 if ! node_version=$(node --version 2>/dev/null); then
-	echo "Wolfchatter needs Node 24.16 or newer; no node answered on this PATH." >&2
+	echo "Wolfchatter needs Node 22.18 or newer; no node answered on this PATH. See .nvmrc." >&2
 	exit 1
 fi
 
@@ -19,8 +20,8 @@ case "$major.$minor" in
 	*[!0-9.]* | .* | *.) major=0 minor=0 ;;
 esac
 
-if [ "$major" -lt 24 ] || { [ "$major" -eq 24 ] && [ "$minor" -lt 16 ]; }; then
-	echo "Wolfchatter needs Node 24.16 or newer; this is $node_version." >&2
+if [ "$major" -lt 22 ] || { [ "$major" -eq 22 ] && [ "$minor" -lt 18 ]; }; then
+	echo "Wolfchatter needs Node 22.18 or newer; this is $node_version. Try: nvm use 24" >&2
 	exit 1
 fi
 

@@ -22,6 +22,9 @@ npm-debug.log*
 # Personal Claude Code overrides (.claude/settings.json is versioned on purpose)
 .claude/settings.local.json
 
+# Memory the reviewer agent writes for itself while it works; not part of the deliverable
+.claude/agent-memory/
+
 # OS and editors (shared VS Code settings are versioned on purpose)
 .DS_Store
 Thumbs.db

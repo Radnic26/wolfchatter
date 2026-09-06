@@ -1,7 +1,25 @@
 import * as z from "zod";
 
-export const usernameSchema = z.string().trim().min(1).max(32);
-export const messageBodySchema = z.string().trim().min(1).max(500);
+/**
+ * PostgreSQL stores no NUL inside a text value and the driver throws on one, which would
+ * answer a crafted post with a 500 where FR-8 asks for a 4xx. The check is appended, so the
+ * value is trimmed and measured first and the rules a person types against are unchanged.
+ */
+const carriesNoNullCharacter = (value: string) => !value.includes("\u0000");
+const nullCharacterRefusal = "A null character is not allowed.";
+
+export const usernameSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(32)
+  .refine(carriesNoNullCharacter, nullCharacterRefusal);
+export const messageBodySchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(500)
+  .refine(carriesNoNullCharacter, nullCharacterRefusal);
 
 /**
  * The id travels with the message so a retry after a dropped response is stored once;

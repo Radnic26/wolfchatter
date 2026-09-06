@@ -73,6 +73,31 @@ describe("the headers an API answer carries", () => {
     expect(response.headers.get("content-security-policy")).toBeNull();
     expect(response.headers.get("x-content-type-options")).toBeNull();
   });
+
+  it("sends the origin to the tile server, which authenticates by it and 401s without it", async () => {
+    const response = await appOver(emptyDatabase).request("/api/health");
+
+    // `no-referrer`, the default, answers every tile with 401 and leaves the map blank. The
+    // origin is what the tiles are keyed to; the path, which would name the open room, is
+    // still never sent.
+    expect(response.headers.get("referrer-policy")).toBe("strict-origin-when-cross-origin");
+  });
+
+  it("says the same thing twice about framing rather than two different things", async () => {
+    const response = await appOver(emptyDatabase).request("/api/health");
+
+    expect(response.headers.get("content-security-policy")).toContain("frame-ancestors 'none'");
+    expect(response.headers.get("x-frame-options")).toBe("DENY");
+  });
+
+  it("pins the two directives that do not fall back to default-src", async () => {
+    const response = await appOver(emptyDatabase).request("/api/health");
+
+    const policy = response.headers.get("content-security-policy") ?? "";
+    expect(policy).toContain("base-uri 'self'");
+    expect(policy).toContain("form-action 'self'");
+    expect(policy).toContain("script-src 'self'");
+  });
 });
 
 describe("the origin a write arrives from", () => {

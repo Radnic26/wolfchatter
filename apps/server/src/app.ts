@@ -23,15 +23,31 @@ const contentSecurityPolicy = {
   defaultSrc: ["'self'"],
   connectSrc: ["'self'"],
   imgSrc: ["'self'", "data:", ...tileServers],
+  scriptSrc: ["'self'"],
   styleSrc: ["'self'"],
+  // Neither of these falls back to `default-src`, so omitting them leaves an injected
+  // `<base>` free to re-point every relative URL and a form free to post anywhere.
+  baseUri: ["'self'"],
+  formAction: ["'self'"],
   frameAncestors: ["'none'"],
 };
 
 /** A year, which is the shortest max-age the HSTS preload lists accept. */
 const strictTransportSecurity = "max-age=31536000; includeSubDomains";
 
-const headersOverTls = secureHeaders({ contentSecurityPolicy, strictTransportSecurity });
-const headersOverPlainHttp = secureHeaders({ contentSecurityPolicy, strictTransportSecurity: false });
+/**
+ * The tile server authenticates by `Referer`, so the default of `no-referrer` answers every
+ * tile with 401 and leaves the map blank. This sends the origin the tiles are keyed to and
+ * still never sends the path, which is the part that would say which room is open.
+ */
+const referrerPolicy = "strict-origin-when-cross-origin";
+
+/** The same answer as `frame-ancestors 'none'`, for a browser too old to read the policy. */
+const xFrameOptions = "DENY";
+
+const policy = { contentSecurityPolicy, referrerPolicy, xFrameOptions };
+const headersOverTls = secureHeaders({ ...policy, strictTransportSecurity });
+const headersOverPlainHttp = secureHeaders({ ...policy, strictTransportSecurity: false });
 
 /**
  * HSTS pins a host to https for a year, so sending it from a plain http origin would take

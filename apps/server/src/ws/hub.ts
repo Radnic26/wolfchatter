@@ -59,13 +59,17 @@ export function createChatHub({ now }: ChatHubOptions): ChatHub {
     connection.socket.terminate();
   }
 
-  function send(connection: Connection, frame: ServerFrame): void {
+  function sendText(connection: Connection, text: string): void {
     if (connection.socket.bufferedAmount > maximumQueuedBytes) {
       drop(connection);
       return;
     }
 
-    connection.socket.send(JSON.stringify(frame));
+    connection.socket.send(text);
+  }
+
+  function send(connection: Connection, frame: ServerFrame): void {
+    sendText(connection, JSON.stringify(frame));
   }
 
   function fail(connection: Connection, code: ErrorCode): void {
@@ -104,9 +108,11 @@ export function createChatHub({ now }: ChatHubOptions): ChatHub {
     }
   }
 
+  /** One fan-out, one serialisation: the frame is the same bytes for every recipient. */
   function publish(frame: ServerFrame, reaches: (connection: Connection) => boolean): void {
+    const text = JSON.stringify(frame);
     for (const connection of connections.values()) {
-      if (reaches(connection)) send(connection, frame);
+      if (reaches(connection)) sendText(connection, text);
     }
   }
 

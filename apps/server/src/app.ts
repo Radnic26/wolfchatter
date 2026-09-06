@@ -1,4 +1,5 @@
 import { type Context, type ErrorHandler, Hono, type MiddlewareHandler } from "hono";
+import { compress } from "hono/compress";
 import { HTTPException } from "hono/http-exception";
 import { secureHeaders } from "hono/secure-headers";
 import type { Queryable } from "./db/db.ts";
@@ -106,6 +107,10 @@ export function createApp({ db, broadcaster, allowedOrigins, addressOf, now }: A
       // Scoped to the API namespace rather than the instance, because the instance also
       // carries `/ws`. The process mounts the same headers over the front end it serves.
       .use("/api/*", secureResponseHeaders)
+      // Scoped to the API rather than the instance for the same reason as the headers: this
+      // instance also carries `/ws`, and an upgrade does not survive a middleware that
+      // writes one. The room list is the response worth this — the whole map in one body.
+      .use("/api/*", compress())
       .use("/api/*", refuseForeignWrites(allowedOrigins))
       .get("/api/health", (c) => c.json({ status: "ok" as const }))
       .route("/api", createRoomRoutes({ db, broadcaster, limitWrites }))

@@ -90,6 +90,15 @@ describe("the headers an API answer carries", () => {
     expect(response.headers.get("x-frame-options")).toBe("DENY");
   });
 
+  it("compresses an answer for a caller that asked for it", async () => {
+    const response = await appOver(emptyDatabase).request("/api/rooms", {
+      headers: { "accept-encoding": "gzip" },
+    });
+
+    // The room list is the whole map in one body, and it was being sent raw.
+    expect(response.headers.get("content-encoding")).toBe("gzip");
+  });
+
   it("pins the two directives that do not fall back to default-src", async () => {
     const response = await appOver(emptyDatabase).request("/api/health");
 

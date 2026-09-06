@@ -1,0 +1,24 @@
+Start-up time, production image on a real PostgreSQL
+date:   2026-09-06T11:49:25.113Z
+host:   darwin arm64, Node v24.20.0
+image:  sha256:c52a0f84903b (built beforehand; the build is not timed)
+commit: c4b9535
+
+== whole stack: docker compose up on an empty database volume ==
+  cold run 1: 5.95 s
+  cold run 2: 5.94 s
+  cold run 3: 5.97 s
+
+== whole stack: the same volume, containers restarted ==
+  warm run 1: 5.94 s
+  warm run 2: 5.94 s
+  warm run 3: 5.93 s
+
+  Both are floored by docker-compose.yml's healthcheck: pg_isready runs on a 5 s interval
+  and the app waits for the first pass, so ~5 s of either number is that interval rather
+  than anything either process does.
+
+== application alone: PostgreSQL already healthy, empty schema, migrations at boot ==
+  app run 1: 0.89 s
+  app run 2: 0.88 s
+  app run 3: 0.89 s

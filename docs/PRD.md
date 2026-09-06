@@ -72,6 +72,8 @@ Wolfchatter is a real-time chat on a map. A user clicks anywhere on a Leaflet ma
 
 Twelve small pull requests in this order: PRD → AI configuration → scaffold → shared schema and server → map and pins → messages → real-time → accessibility → infra estimate → self-review and fixes → audit (security, load, performance) and fixes → README and final report (`delivery-plan.md`).
 
+Eighteen were merged: the twelve rows took fourteen, because the brand system and a correction to the wordmark were their own, and four came after them. Those four are what the check below produced. Running the app on a second machine and on a phone found five things no test could — a Node version that stopped `npm install` before anything started, a network address that the write gate and the socket upgrade both refused, a database volume from an earlier run that locked the app out of its own database, a map that never re-measured its container when a phone's viewport grew, and a server that knew the address to open on a phone and never printed it. The sixth is an improvement rather than a repair: the collapsed sheet now opens from anywhere on its row instead of from the chevron alone.
+
 **End-to-end check before submission:** fresh clone → `./start-wolfchatter` with Enter on every prompt (then, separately, `npm run dev` and `docker compose up --build`) → two browsers → click the map → pin and "Chatroom 1" panel in both → post from each → messages appear live in both → reload → everything persists → click the other marker → panel switches → `npm run check` green.
 
 ## 7. Open questions sent to Wolfpack

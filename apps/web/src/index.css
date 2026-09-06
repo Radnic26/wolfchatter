@@ -37,10 +37,23 @@
   /* The two heights of the sheet. Named because the map's tile credit has to clear both. */
   --spacing-peek: 4.5rem;
   --spacing-sheet: 70dvh;
+  /* A phone's bottom inset stands the collapsed sheet off the screen instead of eating into
+     the peek, which is where the newest message is and the whole reason the peek exists. */
+  --spacing-peek-safe: calc(var(--spacing-peek) + env(safe-area-inset-bottom));
 }
 
 :root {
   color-scheme: light dark;
+}
+
+/* Leaflet draws its zoom buttons at 26 px, and at 30 on a touch device, where FR-10 asks for
+   44. Its touch rule is answered by name because a `.leaflet-bar a` of ours would lose to it
+   on exactly the screens the larger target is for. */
+.leaflet-bar a,
+.leaflet-touch .leaflet-bar a {
+  width: 2.75rem;
+  height: 2.75rem;
+  line-height: 2.75rem;
 }
 
 /* Crediting the tiles is a licence term, not decoration, so the sheet lying over the map
@@ -48,7 +61,7 @@
    The panel reports its own state, which is what lets the credit follow it up. */
 @media (width < 48rem) {
   .leaflet-bottom.leaflet-right {
-    bottom: var(--spacing-peek);
+    bottom: var(--spacing-peek-safe);
   }
 
   body:has([data-expanded="true"]) .leaflet-bottom.leaflet-right {

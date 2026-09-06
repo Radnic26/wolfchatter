@@ -1,8 +1,23 @@
 import { type ReactNode, useState } from "react";
 import { vi } from "vitest";
 
-type LatLng = { lat: number; lng: number };
+type Point = { lat: number; lng: number };
+type LatLng = Point & { wrap: () => LatLng };
 type MapHandlers = { click?: (event: { latlng: LatLng }) => void };
+
+/** Leaflet's own `wrapNum` over the `[-180, 180]` of CRS.Earth, where the maximum stays put. */
+function wrapLongitude(lng: number): number {
+  return lng === 180 ? lng : ((((lng + 180) % 360) + 360) % 360) - 180;
+}
+
+/**
+ * `LatLng.wrap()` folds the longitude back onto the primary copy of the world and leaves the
+ * latitude alone. The arithmetic is Leaflet's rather than a fixed answer, because what the
+ * app relies on is the fold itself.
+ */
+function latLng({ lat, lng }: Point): LatLng {
+  return { lat, lng, wrap: () => latLng({ lat, lng: wrapLongitude(lng) }) };
+}
 
 /**
  * jsdom has no map, so `react-leaflet` is replaced by the smallest thing the components
@@ -26,8 +41,8 @@ export const leafletTestbed = {
     leafletTestbed.setView.mockClear();
   },
 
-  clickMap(latlng: LatLng) {
-    leafletTestbed.handlers.click?.({ latlng });
+  clickMap(point: Point) {
+    leafletTestbed.handlers.click?.({ latlng: latLng(point) });
   },
 
   /**

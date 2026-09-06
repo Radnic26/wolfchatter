@@ -39,7 +39,9 @@ export function MapTaps({ onTap }: MapTapsProps) {
 
   useMapEvents({
     click(event) {
-      if (opensRoom.current) onTap(event.latlng);
+      // Leaflet keeps counting past the 180th meridian, so a click on the copy of the world
+      // the map was panned onto carries a longitude no room can be stored at.
+      if (opensRoom.current) onTap(event.latlng.wrap());
     },
   });
 

@@ -20,7 +20,22 @@ describe("MapTaps", () => {
     leafletTestbed.pointer("pointerup", { x: 120, y: 200, at: 90 });
     leafletTestbed.clickMap(cluj);
 
-    expect(onTap).toHaveBeenCalledWith(cluj);
+    // Leaflet folds every point through modular arithmetic, so one already in range comes
+    // back a nanometre from where it went in.
+    expect(onTap).toHaveBeenCalledWith(
+      expect.objectContaining({ lat: cluj.lat, lng: expect.closeTo(cluj.lng, 10) }),
+    );
+  });
+
+  it("folds a tap past the 180th meridian back onto the primary copy of the world", () => {
+    const onTap = vi.fn();
+    render(<MapTaps onTap={onTap} />);
+
+    leafletTestbed.pointer("pointerdown", { x: 120, y: 200, at: 0 });
+    leafletTestbed.pointer("pointerup", { x: 120, y: 200, at: 90 });
+    leafletTestbed.clickMap({ lat: cluj.lat, lng: 200 });
+
+    expect(onTap).toHaveBeenCalledWith(expect.objectContaining({ lat: cluj.lat, lng: -160 }));
   });
 
   it("opens no room when the gesture was a pan across the map", () => {

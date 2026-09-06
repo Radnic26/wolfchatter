@@ -22,7 +22,7 @@ export function App() {
   const { rooms, connection } = useSyncExternalStore(store.subscribe, store.getSnapshot);
   const selectedRoomId = useSelectedRoomId();
   const [failedToOpen, setFailedToOpen] = useState(false);
-  const [tappedRoomId, setTappedRoomId] = useState<string | null>(null);
+  const [roomToWriteInId, setRoomToWriteInId] = useState<string | null>(null);
 
   useEffect(() => {
     loadRooms(store).catch((failure: unknown) => {
@@ -44,7 +44,7 @@ export function App() {
     const opening = { id: randomUuid(), lat: point.lat, lng: point.lng };
 
     setFailedToOpen(false);
-    setTappedRoomId(opening.id);
+    setRoomToWriteInId(opening.id);
     selectRoom(opening.id);
 
     try {
@@ -55,9 +55,17 @@ export function App() {
     }
   }
 
+  /** A pin asks "what is this?", so the sheet stays a peek and any earlier failure goes. */
+  function showRoom(roomId: string) {
+    setFailedToOpen(false);
+    setRoomToWriteInId(null);
+    selectRoom(roomId);
+  }
+
   /** The room is let go of, and the keyboard goes back to the map the pins are on. */
   function closeRoom() {
     setFailedToOpen(false);
+    setRoomToWriteInId(null);
     selectRoom(null);
     focusTheMap();
   }
@@ -80,7 +88,7 @@ export function App() {
           <ChatMap
             rooms={rooms}
             selectedRoomId={selectedRoomId}
-            onSelectRoom={selectRoom}
+            onSelectRoom={showRoom}
             onTapMap={openRoom}
           />
         </div>
@@ -90,7 +98,7 @@ export function App() {
           client={client}
           room={room}
           failedToOpen={failedToOpen}
-          openExpanded={room !== undefined && room.id === tappedRoomId}
+          openExpanded={room !== undefined && room.id === roomToWriteInId}
           onClose={closeRoom}
         />
       </div>

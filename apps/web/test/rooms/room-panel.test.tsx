@@ -119,6 +119,14 @@ describe("RoomPanel", () => {
     expect(screen.getByRole("button", { name: "Collapse the chatroom" })).toBeInTheDocument();
   });
 
+  it("stands the collapsed sheet off the bottom of the screen without shortening the peek", () => {
+    showPanel(stored);
+
+    // Tailwind's own output is not in jsdom, so the class is where the height can be read: it
+    // is the sheet that grows by the safe-area strip, leaving the peek row its full height.
+    expect(screen.getByRole("region", { name: "Chatroom" })).toHaveClass("h-peek-safe");
+  });
+
   it("offers nothing to expand when there is no room, so the peek is the whole panel", () => {
     showPanel(undefined);
 

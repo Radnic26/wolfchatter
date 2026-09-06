@@ -38,7 +38,9 @@ export function MessageComposer({ username, disabled, onSend }: MessageComposerP
 
     try {
       await onSend(checked.posted);
-      setBody("");
+      // Whatever was typed while the request was in flight is the next message rather than
+      // the one that just went out, so only the words that were sent are cleared.
+      setBody((typed) => (typed === body ? "" : typed));
       return {};
     } catch (failure) {
       console.error("The message could not be sent", failure);

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { MessageComposer } from "../../src/messages/message-composer.tsx";
@@ -110,6 +110,22 @@ describe("MessageComposer", () => {
 
     await waitFor(() => expect(body).toHaveValue(""));
     expect(name).toHaveValue("ana");
+  });
+
+  it("keeps the words typed while the message was still on its way", async () => {
+    let deliver = () => {};
+    const inFlight = new Promise<void>((resolve) => {
+      deliver = () => resolve();
+    });
+    const { user, name, body, submit } = showComposer({}, () => inFlight);
+
+    await user.type(name, "ana");
+    await user.type(body, "hello");
+    await user.click(submit);
+    await user.type(body, " again");
+    await act(async () => deliver());
+
+    expect(body).toHaveValue("hello again");
   });
 
   it("keeps the words that were not sent, so a failure costs nobody their message", async () => {

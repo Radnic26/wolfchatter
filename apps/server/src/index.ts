@@ -1,3 +1,4 @@
+import { networkInterfaces } from "node:os";
 import { join } from "node:path";
 import { performance } from "node:perf_hooks";
 import { serve } from "@hono/node-server";
@@ -10,6 +11,7 @@ import { applyMigrations, migrationsDirectory } from "./db/migrate.ts";
 import { seedSampleData } from "./db/seed.ts";
 import { parseServerConfig } from "./env.ts";
 import { clientAddress } from "./lib/client-address.ts";
+import { networkOrigins } from "./lib/network-origins.ts";
 import { createChatHub } from "./ws/hub.ts";
 import { createSocketServer } from "./ws/socket-server.ts";
 
@@ -34,10 +36,13 @@ const sockets = createSocketServer();
 const hub = createChatHub({ now: () => performance.now() });
 sockets.on("connection", (socket) => hub.accept(socket));
 
+// A phone on the same Wi-Fi reaches this by an address of its own, and both the write gate
+// and the upgrade check Origin, so the addresses this host answers to are allowed alongside
+// whatever ALLOWED_ORIGINS names.
 const app = createApp({
   db,
   broadcaster: hub,
-  allowedOrigins: config.ALLOWED_ORIGINS,
+  allowedOrigins: [...config.ALLOWED_ORIGINS, ...networkOrigins(networkInterfaces(), config.PORT)],
   addressOf: (c) => clientAddress(c, config.TRUSTED_CLIENT_HEADER),
   now: () => performance.now(),
 });

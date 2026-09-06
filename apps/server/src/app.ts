@@ -12,13 +12,11 @@ import { isAllowedOrigin } from "./ws/origin-allowlist.ts";
 import { createSocketRoutes } from "./ws/routes.ts";
 
 /**
- * A tile server is the one origin the app reaches outside itself, and which of the two it
- * reaches is chosen when the front end is built rather than told to this process, so the
- * policy names the watercolour default and the OpenStreetMap alternative `.env.example`
- * offers instead. Everything else is served from here: the socket is same-origin, and the
- * build emits no inline script and no inline style.
+ * The tile server is the one origin the app reaches outside itself. Everything else is
+ * served from here: the socket is same-origin, and the build emits no inline script and no
+ * inline style.
  */
-const tileServers = ["https://tiles.stadiamaps.com", "https://tile.openstreetmap.org"];
+const tileServers = ["https://tiles.stadiamaps.com"];
 
 const contentSecurityPolicy = {
   defaultSrc: ["'self'"],

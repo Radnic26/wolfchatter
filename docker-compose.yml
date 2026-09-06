@@ -21,11 +21,6 @@ services:
   app:
     build:
       context: .
-      # The bundle is built inside the image, where .env is neither copied nor read, so the
-      # tile answer only survives as a build argument.
-      args:
-        VITE_TILE_URL: ${VITE_TILE_URL:-}
-        VITE_TILE_ATTRIBUTION: ${VITE_TILE_ATTRIBUTION:-}
     environment:
       PORT: ${PORT:-3000}
       DATABASE_URL: ${DATABASE_URL:?run ./start-wolfchatter first, it writes .env}

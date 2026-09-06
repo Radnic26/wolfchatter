@@ -90,6 +90,8 @@ Without a running Docker daemon only the third is offered, so the command still 
 
 The wizard generates a database password, writes it to `.env` with mode `0600`, and installs before it starts. `.env` is git-ignored; only `.env.example` is committed, and nothing in it is secret.
 
+It also lists this machine's own addresses on the network in `ALLOWED_ORIGINS` and prints them when it starts, so the app can be opened on a phone on the same Wi-Fi without a second step — the layout below 768 px is a requirement, and it is worth seeing on a real one. Both the write path and the socket upgrade check `Origin`, which is why the address has to be named rather than merely reachable.
+
 It also writes `SEED_SAMPLE_DATA=true`, so a first run opens on a map with six sample rooms and their conversations on it rather than on an empty world. The server seeds only a database that has no rooms in it, so a restart adds nothing and a real deployment that never had the flag stays empty; deleting the line stops it entirely.
 
 Once `.env` exists, these do the same thing without the questions:

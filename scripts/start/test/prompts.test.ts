@@ -1,13 +1,6 @@
 import { describe, expect, it } from "vitest";
-import {
-  renderDockerMissingNotice,
-  renderReady,
-  renderRunModeQuestion,
-  renderTileSourceQuestion,
-  renderUsage,
-} from "../prompts.ts";
+import { renderDockerMissingNotice, renderReady, renderRunModeQuestion, renderUsage } from "../prompts.ts";
 import { offeredRunModes } from "../run-mode.ts";
-import { offeredTileSources } from "../tile-source.ts";
 
 describe("renderRunModeQuestion", () => {
   it("numbers the options from one, so the answer is the position typed", () => {
@@ -26,19 +19,6 @@ describe("renderRunModeQuestion", () => {
   });
 });
 
-describe("renderTileSourceQuestion", () => {
-  it("numbers the options from one, so the answer is the position typed", () => {
-    const question = renderTileSourceQuestion(offeredTileSources);
-
-    expect(question).toContain("1) Watercolour, via Stadia");
-    expect(question).toContain("2) OpenStreetMap");
-  });
-
-  it("says what each one costs, so the choice needs no documentation", () => {
-    expect(renderTileSourceQuestion(offeredTileSources)).toContain("no key needed on localhost");
-  });
-});
-
 describe("renderDockerMissingNotice", () => {
   it("says why the other options are absent and how to get them back", () => {
     expect(renderDockerMissingNotice()).toMatch(/Docker is not running/);
@@ -48,12 +28,25 @@ describe("renderDockerMissingNotice", () => {
 
 describe("renderReady", () => {
   it("prints the url and promises reload when the dev servers are running", () => {
-    expect(renderReady("http://localhost:5173", true)).toContain("http://localhost:5173");
-    expect(renderReady("http://localhost:5173", true)).toContain("reload automatically");
+    const ready = renderReady("http://localhost:5173", true, []);
+
+    expect(ready).toContain("http://localhost:5173");
+    expect(ready).toContain("reload automatically");
   });
 
   it("warns that the production image does not pick up edits", () => {
-    expect(renderReady("http://localhost:3000", false)).toContain("need a rebuild");
+    expect(renderReady("http://localhost:3000", false, [])).toContain("need a rebuild");
+  });
+
+  it("offers the address on the network, which is the one to open on a phone", () => {
+    const ready = renderReady("http://localhost:3000", false, ["http://192.168.1.20:3000"]);
+
+    expect(ready).toContain("http://192.168.1.20:3000");
+    expect(ready).toContain("phone");
+  });
+
+  it("says nothing about the network when this machine is on none", () => {
+    expect(renderReady("http://localhost:3000", false, [])).not.toContain("phone");
   });
 });
 

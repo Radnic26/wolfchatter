@@ -14,14 +14,7 @@ FROM manifests AS build
 RUN --mount=type=cache,target=/root/.npm npm ci
 COPY . .
 
-# The web bundle is built here and the wizard's .env never reaches this build, so the tile
-# choice has to arrive as a build argument or the answer is thrown away. An empty value is
-# not "unset" to the app, which takes a tile URL and its attribution together or not at all,
-# so an unanswered pair is cleared rather than baked in as two empty strings.
-ARG VITE_TILE_URL=""
-ARG VITE_TILE_ATTRIBUTION=""
-RUN if [ -z "$VITE_TILE_URL" ]; then unset VITE_TILE_URL VITE_TILE_ATTRIBUTION; fi; \
-	npm run build --workspace apps/web
+RUN npm run build --workspace apps/web
 
 # A second, independent install: only what the server needs at runtime. Scoping it to the
 # server workspace keeps the web app's dependencies, Leaflet included, out of the image.

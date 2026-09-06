@@ -3,10 +3,13 @@ import type { Answers } from "./answers.ts";
 export type StartPlan = {
   commands: readonly (readonly string[])[];
   url: string;
+  /** The port `url` names, so the same page can be offered at this machine's other addresses. */
+  port: number;
   reloads: boolean;
 };
 
-const viteDevServer = "http://localhost:5173";
+const viteDevServerPort = 5173;
+const viteDevServer = `http://localhost:${viteDevServerPort}`;
 
 /**
  * The whole decision of a first run, as data: which commands to run, in order, and where
@@ -17,6 +20,7 @@ export function planStart(answers: Answers): StartPlan {
     return {
       commands: [["docker", "compose", "up", "--build"]],
       url: `http://localhost:${answers.port}`,
+      port: answers.port,
       reloads: false,
     };
   }
@@ -30,9 +34,10 @@ export function planStart(answers: Answers): StartPlan {
         ["npm", "run", "dev"],
       ],
       url: viteDevServer,
+      port: viteDevServerPort,
       reloads: true,
     };
   }
 
-  return { commands: [["npm", "run", "dev"]], url: viteDevServer, reloads: true };
+  return { commands: [["npm", "run", "dev"]], url: viteDevServer, port: viteDevServerPort, reloads: true };
 }

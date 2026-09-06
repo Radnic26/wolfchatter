@@ -35,6 +35,8 @@ export const leafletTestbed = {
   markerRenders: 0,
   flyTo: vi.fn<(position: [number, number], zoom: number) => void>(),
   setView: vi.fn<(position: [number, number], zoom: number) => void>(),
+  /** Leaflet re-measures its container only when told to, so the telling is the behaviour. */
+  invalidateSize: vi.fn<(animate: boolean) => void>(),
 
   reset() {
     leafletTestbed.container.remove();
@@ -45,6 +47,7 @@ export const leafletTestbed = {
     leafletTestbed.markerRenders = 0;
     leafletTestbed.flyTo.mockClear();
     leafletTestbed.setView.mockClear();
+    leafletTestbed.invalidateSize.mockClear();
   },
 
   clickMap(point: Point) {
@@ -69,6 +72,7 @@ const fakeMap = {
   getZoom: () => 5,
   flyTo: leafletTestbed.flyTo,
   setView: leafletTestbed.setView,
+  invalidateSize: leafletTestbed.invalidateSize,
 };
 
 type MarkerProps = {

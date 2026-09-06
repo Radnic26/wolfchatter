@@ -11,7 +11,7 @@ import { applyMigrations, migrationsDirectory } from "./db/migrate.ts";
 import { seedSampleData } from "./db/seed.ts";
 import { parseServerConfig } from "./env.ts";
 import { clientAddress } from "./lib/client-address.ts";
-import { networkOrigins } from "./lib/network-origins.ts";
+import { networkOrigins, reachableOrigins } from "./lib/network-origins.ts";
 import { createChatHub } from "./ws/hub.ts";
 import { createSocketServer } from "./ws/socket-server.ts";
 
@@ -39,10 +39,12 @@ sockets.on("connection", (socket) => hub.accept(socket));
 // A phone on the same Wi-Fi reaches this by an address of its own, and both the write gate
 // and the upgrade check Origin, so the addresses this host answers to are allowed alongside
 // whatever ALLOWED_ORIGINS names.
+const allowedOrigins = [...config.ALLOWED_ORIGINS, ...networkOrigins(networkInterfaces(), config.PORT)];
+
 const app = createApp({
   db,
   broadcaster: hub,
-  allowedOrigins: [...config.ALLOWED_ORIGINS, ...networkOrigins(networkInterfaces(), config.PORT)],
+  allowedOrigins,
   addressOf: (c) => clientAddress(c, config.TRUSTED_CLIENT_HEADER),
   now: () => performance.now(),
 });
@@ -85,6 +87,13 @@ const server = serve({ fetch: app.fetch, port: config.PORT, websocket: { server:
 const heartbeat = setInterval(() => hub.sweepDeadConnections(), heartbeatMilliseconds);
 
 console.log(`Wolfchatter API listening on http://localhost:${config.PORT}`);
+// Printed here as well as by the wizard, because `docker compose up` is a documented way to
+// start this and never sees the wizard at all. Only what was configured is offered: the
+// addresses this process found on itself are the container's own inside one, and no phone
+// can reach those — the wizard, out on the host, is what puts a real address in the file.
+for (const origin of reachableOrigins(config.ALLOWED_ORIGINS, config.PORT)) {
+  console.log(`  also reachable at ${origin} — same Wi-Fi, try it on a phone`);
+}
 
 // Containers stop with SIGTERM; a terminal sends SIGINT. Both must drain, not drop — and an
 // upgraded socket is not something `server.close()` reaches, so the hub goes first.

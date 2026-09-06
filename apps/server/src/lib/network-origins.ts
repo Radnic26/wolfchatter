@@ -24,3 +24,21 @@ export function networkOrigins(interfaces: NodeJS.Dict<NetworkInterfaceInfo[]>, 
   }
   return [...origins].sort();
 }
+
+const loopbackHosts = new Set(["localhost", "127.0.0.1", "[::1]"]);
+
+/**
+ * The origins worth printing when the process starts: the ones that reach this port from
+ * somewhere other than this machine. In a container the addresses cannot be discovered, but
+ * they arrive anyway — the wizard put them in ALLOWED_ORIGINS and compose passed it through
+ * — so the list the app is willing to answer is also the list of ways to reach it.
+ */
+export function reachableOrigins(allowed: readonly string[], port: number): string[] {
+  const reachable = new Set<string>();
+  for (const origin of allowed) {
+    const parsed = URL.parse(origin);
+    if (parsed === null || loopbackHosts.has(parsed.hostname)) continue;
+    if (parsed.port === String(port)) reachable.add(parsed.origin);
+  }
+  return [...reachable].sort();
+}

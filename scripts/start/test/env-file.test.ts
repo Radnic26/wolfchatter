@@ -170,6 +170,16 @@ describe("readDatabasePassword", () => {
   it("finds nothing when there is no file at all", () => {
     expect(readDatabasePassword(undefined)).toBeUndefined();
   });
+
+  it("finds nothing when the line is there but empty, so a fresh password is minted", () => {
+    // Written flush left because a setting is read by the name the line starts with, which
+    // is what someone editing the file by hand produces.
+    const handEdited = `PORT=3000
+POSTGRES_PASSWORD=
+`;
+
+    expect(readDatabasePassword(handEdited)).toBeUndefined();
+  });
 });
 
 describe("readPort", () => {
